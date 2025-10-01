@@ -1,0 +1,104 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                      String                   @id @default(cuid())
+  timezone                String                   @default("America/New_York")
+  currency                String                   @default("USD")
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  preallocationSettings   PreallocationSettings?
+  budgetPeriods           BudgetPeriod[]
+  recurringDefinitions    RecurringDefinition[]
+}
+
+model PreallocationSettings {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  charityPercent       Float    @default(0)
+  retirementAmount     Float    @default(0)
+  otherSavingsAmount   Float    @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model BudgetPeriod {
+  id               String            @id @default(cuid())
+  userId           String
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  year             Int
+  month            Int               // 1-12
+  status           String            @default("open") // "open" | "locked"
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  incomeItems      IncomeItem[]
+  categoryBudgets  CategoryBudget[]
+  transactions     Transaction[]
+
+  @@unique([userId, year, month])
+}
+
+model IncomeItem {
+  id              String        @id @default(cuid())
+  periodId        String
+  period          BudgetPeriod  @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  date            DateTime
+  source          String
+  amount          Float
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model CategoryBudget {
+  id                String        @id @default(cuid())
+  periodId          String
+  period            BudgetPeriod  @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  category          String
+  amountBudgeted    Float         @default(0)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@unique([periodId, category])
+}
+
+model RecurringDefinition {
+  id                String        @id @default(cuid())
+  userId            String
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category          String        // Must be "Recurring - Essential" or "Recurring - Non-Essential"
+  merchantLabel     String
+  nominalAmount     Float
+  frequency         String        // "monthly" | "weekly" | "biweekly" | "twice_monthly"
+  schedulingRule    String        // JSON string with schedule details
+  active            Boolean       @default(true)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  transactions      Transaction[]
+}
+
+model Transaction {
+  id                      String                @id @default(cuid())
+  periodId                String
+  period                  BudgetPeriod          @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  date                    DateTime
+  description             String
+  amount                  Float
+  category                String
+  status                  String                @default("posted") // "projected" | "posted"
+  source                  String                // "manual" | "recurring"
+  isRecurringInstance     Boolean               @default(false)
+  recurringDefinitionId   String?
+  recurringDefinition     RecurringDefinition?  @relation(fields: [recurringDefinitionId], references: [id], onDelete: SetNull)
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+}

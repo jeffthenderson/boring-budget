@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+:root {
+  --background: #E5E5E0;
+  --foreground: #4A4A45;
+  --ceiling-grey: #C4C4BC;
+  --cubicle-taupe: #9B9B93;
+  --monday-3pm: #6E6E68;
+  --dark: #4A4A45;
+  --white: #FFFFFF;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-ceiling-grey: var(--ceiling-grey);
+  --color-cubicle-taupe: var(--cubicle-taupe);
+  --color-monday-3pm: var(--monday-3pm);
+  --color-dark: var(--dark);
+  --color-white: var(--white);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+* {
+  box-sizing: border-box;
+}
