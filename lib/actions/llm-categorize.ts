@@ -12,6 +12,7 @@ type LLMCategoryResult = {
 }
 
 const ALLOWED_CATEGORIES = CATEGORIES.filter(cat => !isRecurringCategory(cat))
+type AllowedCategory = (typeof ALLOWED_CATEGORIES)[number]
 
 const DEFAULT_CONFIDENCE_THRESHOLD = 0.6
 
@@ -120,7 +121,7 @@ export async function categorizeTransactionsWithLLM(periodId: string) {
     const category = result.category
     const confidence = typeof result.confidence === 'number' ? result.confidence : 1
 
-    if (!category || !ALLOWED_CATEGORIES.includes(category)) {
+    if (!isAllowedCategory(category)) {
       skipped++
       continue
     }
@@ -147,6 +148,11 @@ export async function categorizeTransactionsWithLLM(periodId: string) {
 
   revalidatePath('/')
   return { updated: updates.length, skipped, total: candidates.length }
+}
+
+function isAllowedCategory(category: string | null): category is AllowedCategory {
+  if (!category) return false
+  return ALLOWED_CATEGORIES.includes(category as AllowedCategory)
 }
 
 function parseLLMResults(content: unknown): LLMCategoryResult[] {
