@@ -35,7 +35,6 @@ import {
   createCategoryMappingRule,
   dismissCategoryMappingSuggestion,
 } from '@/lib/actions/category-mappings'
-import { categorizeTransactionsWithLLM } from '@/lib/actions/llm-categorize'
 import { matchExistingImportsForPeriod } from '@/lib/actions/recurring'
 import { createIgnoreRuleFromTransaction } from '@/lib/actions/ignore-rules'
 
@@ -58,6 +57,15 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
   const [isMatchingRecurring, setIsMatchingRecurring] = useState(false)
   const [isCategorizingWithLLM, setIsCategorizingWithLLM] = useState(false)
   const [llmScope, setLlmScope] = useState<'period' | 'all'>('period')
+  const [llmProgress, setLlmProgress] = useState({
+    active: false,
+    totalBatches: 0,
+    totalItems: 0,
+    currentBatch: 0,
+    updatedOrders: 0,
+    updatedTransactions: 0,
+    skipped: 0,
+  })
   const [isSuggestingBudgets, setIsSuggestingBudgets] = useState(false)
   const [allowBudgetSetup, setAllowBudgetSetup] = useState(false)
 
@@ -368,20 +376,109 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
     if (!confirmed) return
 
     setIsCategorizingWithLLM(true)
+    setLlmProgress({
+      active: true,
+      totalBatches: 0,
+      totalItems: 0,
+      currentBatch: 0,
+      updatedOrders: 0,
+      updatedTransactions: 0,
+      skipped: 0,
+    })
     try {
-      const result = await categorizeTransactionsWithLLM(period.id, { scope: llmScope })
-      if (result.updated === 0) {
-        alert('No transactions or linked Amazon orders were categorized.')
+      const res = await fetch('/api/llm-categorize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ periodId: period.id, scope: llmScope }),
+      })
+
+      if (!res.ok || !res.body) {
+        const text = await res.text().catch(() => '')
+        throw new Error(text || 'Unexpected response from the server.')
+      }
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let finalResult: any = null
+
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+
+        let boundaryIndex = buffer.indexOf('\n\n')
+        while (boundaryIndex !== -1) {
+          const chunk = buffer.slice(0, boundaryIndex).trim()
+          buffer = buffer.slice(boundaryIndex + 2)
+          boundaryIndex = buffer.indexOf('\n\n')
+
+          if (!chunk) continue
+          const dataLine = chunk.split('\n').find(line => line.startsWith('data:'))
+          if (!dataLine) continue
+
+          const payloadText = dataLine.replace(/^data:\s*/, '')
+          let payload: any = null
+          try {
+            payload = JSON.parse(payloadText)
+          } catch {
+            continue
+          }
+
+          if (payload?.type === 'error') {
+            throw new Error(payload?.message || 'Failed to categorize with gpt-5-mini.')
+          }
+
+          if (payload?.type === 'start') {
+            setLlmProgress(prev => ({
+              ...prev,
+              totalBatches: payload.totalBatches || 0,
+              totalItems: payload.totalItems || 0,
+              currentBatch: 0,
+              updatedOrders: 0,
+              updatedTransactions: 0,
+              skipped: 0,
+            }))
+          } else if (payload?.type === 'batch') {
+            setLlmProgress(prev => ({
+              ...prev,
+              totalBatches: payload.totalBatches || prev.totalBatches,
+              totalItems: payload.totalItems || prev.totalItems,
+              currentBatch: payload.batch || prev.currentBatch,
+              updatedOrders: payload.updatedOrders ?? prev.updatedOrders,
+              updatedTransactions: payload.updatedTransactions ?? prev.updatedTransactions,
+              skipped: payload.skipped ?? prev.skipped,
+            }))
+          } else if (payload?.type === 'done') {
+            finalResult = payload
+            setLlmProgress(prev => ({
+              ...prev,
+              currentBatch: prev.totalBatches || prev.currentBatch,
+              updatedOrders: payload.updatedOrders ?? prev.updatedOrders,
+              updatedTransactions: payload.updatedTransactions ?? prev.updatedTransactions,
+              skipped: payload.skipped ?? prev.skipped,
+            }))
+          }
+        }
+      }
+
+      if (finalResult) {
+        if (finalResult.updated === 0) {
+          alert('No transactions or linked Amazon orders were categorized.')
+        } else {
+          const updatedTransactions = finalResult.updatedTransactions ?? 0
+          const updatedOrders = finalResult.updatedOrders ?? 0
+          alert(`Categorized ${updatedTransactions} transactions and ${updatedOrders} Amazon orders. Skipped ${finalResult.skipped}.`)
+        }
       } else {
-        const updatedTransactions = result.updatedTransactions ?? 0
-        const updatedOrders = result.updatedOrders ?? 0
-        alert(`Categorized ${updatedTransactions} transactions and ${updatedOrders} Amazon orders. Skipped ${result.skipped}.`)
+        alert('No transactions or linked Amazon orders were categorized.')
       }
       router.refresh()
     } catch (error: any) {
       alert(error?.message || 'Failed to categorize with gpt-5-mini.')
     } finally {
       setIsCategorizingWithLLM(false)
+      setLlmProgress(prev => ({ ...prev, active: false }))
     }
   }
 
@@ -399,8 +496,38 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
   const now = new Date()
   const isCurrentPeriod = period.year === now.getFullYear() && period.month === now.getMonth() + 1
 
+  const progressPercent = llmProgress.totalBatches > 0
+    ? Math.min(100, Math.round((llmProgress.currentBatch / llmProgress.totalBatches) * 100))
+    : 0
+
   return (
     <div className="space-y-6">
+      {llmProgress.active && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-md rounded-lg border-2 border-dark bg-white p-5 shadow-lg">
+            <div className="text-sm uppercase tracking-wider text-dark font-medium">
+              Categorizing with GPT-5-mini
+            </div>
+            <div className="mt-3 h-2 w-full overflow-hidden rounded bg-cubicle-taupe">
+              <div
+                className="h-full bg-dark transition-[width] duration-300"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            <div className="mt-2 text-xs text-monday-3pm">
+              {llmProgress.totalBatches > 0
+                ? `Batch ${llmProgress.currentBatch || 0} of ${llmProgress.totalBatches} · ${progressPercent}%`
+                : 'Preparing batches...'}
+            </div>
+            <div className="mt-2 text-xs text-monday-3pm">
+              Updated {llmProgress.updatedTransactions} transactions · {llmProgress.updatedOrders} Amazon orders · Skipped {llmProgress.skipped}
+            </div>
+            <div className="mt-2 text-xs text-monday-3pm">
+              Please wait — other actions are paused while this runs.
+            </div>
+          </div>
+        </div>
+      )}
       {/* Month Header */}
       <Card title={`${getMonthName(period.month)} ${period.year}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">

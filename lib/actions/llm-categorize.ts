@@ -63,6 +63,16 @@ type LLMAmazonItem = {
 
 type LLMItem = LLMTransactionItem | LLMAmazonItem
 
+type LLMProgressUpdate = {
+  type: 'start' | 'batch'
+  totalBatches: number
+  totalItems: number
+  batch?: number
+  updatedOrders?: number
+  updatedTransactions?: number
+  skipped?: number
+}
+
 type TransactionWithAccount = {
   id: string
   description: string
@@ -152,7 +162,11 @@ function chunkItems(items: LLMItem[], basePrompt: string) {
   return batches
 }
 
-export async function categorizeTransactionsWithLLM(periodId: string, options: CategorizeOptions = {}) {
+export async function categorizeTransactionsWithLLM(
+  periodId: string,
+  options: CategorizeOptions = {},
+  onProgress?: (update: LLMProgressUpdate) => void
+) {
   const user = await getOrCreateUser()
   const apiKey = process.env.OPENAI_API_KEY
   const model = process.env.OPENAI_MODEL || 'gpt-5-mini'
@@ -430,8 +444,13 @@ export async function categorizeTransactionsWithLLM(periodId: string, options: C
   let skipped = 0
   let updatedOrders = 0
   let updatedTransactions = 0
+  const totalBatches = batches.length
+  const totalItems = items.length
 
-  for (const batch of batches) {
+  onProgress?.({ type: 'start', totalBatches, totalItems })
+
+  for (let batchIndex = 0; batchIndex < batches.length; batchIndex += 1) {
+    const batch = batches[batchIndex]
     const userPrompt = `${baseUserPrompt}\n${JSON.stringify(batch)}`
     const requestBody: Record<string, unknown> = {
       model,
@@ -531,6 +550,16 @@ export async function categorizeTransactionsWithLLM(periodId: string, options: C
         updatedTransactions += txResult.count
       }
     }
+
+    onProgress?.({
+      type: 'batch',
+      batch: batchIndex + 1,
+      totalBatches,
+      totalItems,
+      updatedOrders,
+      updatedTransactions,
+      skipped,
+    })
   }
 
   const total = items.length
