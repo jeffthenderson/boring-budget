@@ -364,7 +364,7 @@ export async function linkAmazonOrder(orderId: string, transactionId: string | n
     data: {
       matchedTransactionId: transactionId,
       matchStatus,
-      matchMetadata: null,
+      matchMetadata: Prisma.DbNull,
     },
   })
 
