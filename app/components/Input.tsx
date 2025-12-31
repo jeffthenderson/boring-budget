@@ -1,3 +1,5 @@
+import type { InputHTMLAttributes } from 'react'
+
 export function Input({
   label,
   value,
@@ -25,7 +27,7 @@ export function Input({
   max?: string | number
   step?: string | number
   maxLength?: number
-  inputMode?: string
+  inputMode?: InputHTMLAttributes<HTMLInputElement>['inputMode']
   pattern?: string
   className?: string
 }) {
