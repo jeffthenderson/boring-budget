@@ -13,7 +13,7 @@ const MATCH_LOOKBACK_DAYS = (() => {
   if (Number.isFinite(parsed) && parsed > 0) return parsed
   const windowDays = Number.parseInt(process.env.AMAZON_MATCH_WINDOW_DAYS || '', 10)
   if (Number.isFinite(windowDays) && windowDays > 0) return windowDays
-  return 45
+  return 365
 })()
 
 const MATCH_LOOKAHEAD_DAYS = (() => {
