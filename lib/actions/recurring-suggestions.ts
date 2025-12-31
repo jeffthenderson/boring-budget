@@ -29,6 +29,8 @@ export interface RecurringSuggestion {
   confidence: number
 }
 
+type RecurringSequence = NonNullable<ReturnType<typeof buildSequenceFromOccurrences>>
+
 export async function getRecurringSuggestions(): Promise<RecurringSuggestion[]> {
   const user = await getOrCreateUser()
 
@@ -176,7 +178,7 @@ function buildRecurringSequences(occurrences: SuggestionOccurrence[]) {
   }
 
   const monthsWithMultiple = Array.from(byMonth.values()).some(list => list.length > 1)
-  const sequences: Array<ReturnType<typeof buildSequenceFromOccurrences>> = []
+  const sequences: RecurringSequence[] = []
 
   if (!monthsWithMultiple) {
     const sequence = buildSequenceFromOccurrences(occurrences)
