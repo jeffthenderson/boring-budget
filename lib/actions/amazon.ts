@@ -1,5 +1,6 @@
 'use server'
 
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 import { getOrCreateUser } from './user'
@@ -288,7 +289,7 @@ export async function matchAmazonOrders(options?: { userId?: string; orderIds?: 
         data: {
           matchedTransactionId: candidates[0].id,
           matchStatus: 'matched',
-          matchMetadata: null,
+          matchMetadata: Prisma.DbNull,
         },
       }))
       continue
@@ -301,7 +302,7 @@ export async function matchAmazonOrders(options?: { userId?: string; orderIds?: 
         data: {
           matchedTransactionId: null,
           matchStatus: 'unmatched',
-          matchMetadata: null,
+          matchMetadata: Prisma.DbNull,
         },
       }))
       continue
