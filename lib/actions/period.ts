@@ -229,7 +229,7 @@ export async function suggestCategoryBudgets(
   const recurringTransactions = await prisma.transaction.findMany({
     where: {
       periodId,
-      category: { in: RECURRING_CATEGORIES },
+      category: { in: [...RECURRING_CATEGORIES] },
       isIgnored: false,
     },
     include: {
