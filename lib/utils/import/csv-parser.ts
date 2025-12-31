@@ -19,7 +19,9 @@ export async function parseCSVFile(file: File): Promise<CSVParseResult> {
     transformHeader: (header: string) => header.trim(),
   }
 
-  const parseWithOptions = (options: Papa.ParseConfig) => new Promise<Papa.ParseResult<any>>((resolve, reject) => {
+  type ParseOptions = Papa.ParseConfig & { worker?: boolean }
+
+  const parseWithOptions = (options: ParseOptions) => new Promise<Papa.ParseResult<any>>((resolve, reject) => {
     Papa.parse(file, {
       ...options,
       complete: (results) => resolve(results),
