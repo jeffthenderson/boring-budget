@@ -187,6 +187,9 @@ export default function AmazonPage() {
   const [matching, setMatching] = useState(false)
   const [linkingIds, setLinkingIds] = useState<Set<string>>(new Set())
   const [ignoringIds, setIgnoringIds] = useState<Set<string>>(new Set())
+  const [manualCandidates, setManualCandidates] = useState<Record<string, MatchCandidateGroup[] | null>>({})
+  const [candidateLoading, setCandidateLoading] = useState<Set<string>>(new Set())
+  const [candidateErrors, setCandidateErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     loadOrders()
@@ -348,9 +351,84 @@ export default function AmazonPage() {
   }
 
   function getCandidates(order: AmazonOrder) {
+    if (Object.prototype.hasOwnProperty.call(manualCandidates, order.id)) {
+      return manualCandidates[order.id] || []
+    }
     const metadata = order.matchMetadata
     if (!metadata || !Array.isArray(metadata.candidates)) return []
     return metadata.candidates
+  }
+
+  async function loadCandidates(orderId: string) {
+    setCandidateErrors(prev => ({ ...prev, [orderId]: '' }))
+    setCandidateLoading(prev => new Set(prev).add(orderId))
+    try {
+      const res = await fetch('/api/amazon/candidates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId }),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(text || 'Failed to load candidates.')
+      }
+      const data = await res.json()
+      const candidates = Array.isArray(data?.candidates) ? data.candidates : []
+      setManualCandidates(prev => ({ ...prev, [orderId]: candidates }))
+    } catch (err: any) {
+      console.error(err)
+      setCandidateErrors(prev => ({ ...prev, [orderId]: err?.message || 'Failed to load candidates.' }))
+      setManualCandidates(prev => ({ ...prev, [orderId]: [] }))
+    } finally {
+      setCandidateLoading(prev => {
+        const next = new Set(prev)
+        next.delete(orderId)
+        return next
+      })
+    }
+  }
+
+  function renderCandidateGroups(order: AmazonOrder, candidates: MatchCandidateGroup[], isLinking: boolean) {
+    if (candidates.length === 0) return null
+    return (
+      <div className="mt-2 space-y-2">
+        {candidates.map((candidateGroup, groupIndex) => {
+          const groupTransactions = candidateGroup.transactions || []
+          const groupIds = candidateGroup.transactionIds || groupTransactions.map(tx => tx.id)
+          const groupKey = groupIds.length ? groupIds.join('-') : `${order.id}-${groupIndex}`
+          const groupTotal = typeof candidateGroup.total === 'number'
+            ? candidateGroup.total
+            : groupTransactions.reduce((sum, tx) => sum + tx.amount, 0)
+
+          return (
+            <div
+              key={groupKey}
+              className="flex flex-col gap-2 border-2 border-cubicle-taupe bg-white p-3"
+            >
+              <div className="text-sm text-dark">
+                Group total: {formatCurrency(groupTotal, order.currency || 'CAD')}
+                {candidateGroup.dateSpanDays !== undefined && ` · ${candidateGroup.dateSpanDays}d span`}
+              </div>
+              {groupTransactions.map(candidate => (
+                <div key={candidate.id} className="text-xs text-monday-3pm">
+                  {candidate.date} · {formatCurrency(candidate.amount, order.currency || 'CAD')} · {candidate.description}
+                  {candidate.subDescription ? ` · ${candidate.subDescription}` : ''}
+                  {candidate.category ? ` · ${candidate.category}` : ''}
+                </div>
+              ))}
+              <div>
+                <Button
+                  onClick={() => linkOrder(order.id, groupIds)}
+                  disabled={isLinking}
+                >
+                  {isLinking ? 'LINKING...' : 'LINK THESE TRANSACTIONS'}
+                </Button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
   }
 
   return (
@@ -493,6 +571,9 @@ export default function AmazonPage() {
             <div className="space-y-4">
               {filteredOrders.map(order => {
                 const candidates = getCandidates(order)
+                const manualLoaded = Object.prototype.hasOwnProperty.call(manualCandidates, order.id)
+                const candidateError = candidateErrors[order.id]
+                const isCandidateLoading = candidateLoading.has(order.id)
                 const isLinking = linkingIds.has(order.id)
                 const isIgnoring = ignoringIds.has(order.id)
                 const linkedTransactions = (order.amazonOrderTransactions || [])
@@ -592,44 +673,26 @@ export default function AmazonPage() {
                     {order.matchStatus === 'ambiguous' && (
                       <div className="mt-3 border-t border-cubicle-taupe pt-3 space-y-2">
                         <div className="text-xs uppercase tracking-wider text-dark font-medium">Possible Matches</div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            variant="secondary"
+                            onClick={() => loadCandidates(order.id)}
+                            disabled={isCandidateLoading}
+                          >
+                            {isCandidateLoading
+                              ? 'LOADING...'
+                              : (manualLoaded ? 'REFRESH CANDIDATES' : 'FIND CANDIDATES')}
+                          </Button>
+                          {candidateError && (
+                            <div className="text-xs text-monday-3pm">{candidateError}</div>
+                          )}
+                        </div>
                         {candidates.length === 0 ? (
-                          <div className="text-xs text-monday-3pm">No candidates stored.</div>
+                          <div className="text-xs text-monday-3pm">
+                            {manualLoaded ? 'No candidates found in the current window.' : 'No candidates stored.'}
+                          </div>
                         ) : (
-                          candidates.map((candidateGroup, groupIndex) => {
-                            const groupTransactions = candidateGroup.transactions || []
-                            const groupIds = candidateGroup.transactionIds || groupTransactions.map(tx => tx.id)
-                            const groupKey = groupIds.length ? groupIds.join('-') : `${order.id}-${groupIndex}`
-                            const groupTotal = typeof candidateGroup.total === 'number'
-                              ? candidateGroup.total
-                              : groupTransactions.reduce((sum, tx) => sum + tx.amount, 0)
-
-                            return (
-                              <div
-                                key={groupKey}
-                                className="flex flex-col gap-2 border-2 border-cubicle-taupe bg-white p-3"
-                              >
-                              <div className="text-sm text-dark">
-                                Group total: {formatCurrency(groupTotal, order.currency || 'CAD')}
-                                {candidateGroup.dateSpanDays !== undefined && ` · ${candidateGroup.dateSpanDays}d span`}
-                              </div>
-                              {groupTransactions.map(candidate => (
-                                <div key={candidate.id} className="text-xs text-monday-3pm">
-                                  {candidate.date} · {formatCurrency(candidate.amount, order.currency || 'CAD')} · {candidate.description}
-                                  {candidate.subDescription ? ` · ${candidate.subDescription}` : ''}
-                                  {candidate.category ? ` · ${candidate.category}` : ''}
-                                </div>
-                              ))}
-                              <div>
-                                <Button
-                                  onClick={() => linkOrder(order.id, groupIds)}
-                                  disabled={isLinking}
-                                >
-                                  {isLinking ? 'LINKING...' : 'LINK THESE TRANSACTIONS'}
-                                </Button>
-                              </div>
-                            </div>
-                            )
-                          })
+                          renderCandidateGroups(order, candidates, isLinking)
                         )}
                       </div>
                     )}
@@ -639,6 +702,26 @@ export default function AmazonPage() {
                         <div className="text-xs text-monday-3pm">
                           No matching Amazon transactions found. Import the transaction CSV first, then re-run matching.
                         </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <Button
+                            variant="secondary"
+                            onClick={() => loadCandidates(order.id)}
+                            disabled={isCandidateLoading}
+                          >
+                            {isCandidateLoading
+                              ? 'LOADING...'
+                              : (manualLoaded ? 'REFRESH CANDIDATES' : 'FIND CANDIDATES')}
+                          </Button>
+                          {candidateError && (
+                            <div className="text-xs text-monday-3pm">{candidateError}</div>
+                          )}
+                        </div>
+                        {manualLoaded && candidates.length === 0 && (
+                          <div className="mt-2 text-xs text-monday-3pm">
+                            No candidates found in the current window.
+                          </div>
+                        )}
+                        {renderCandidateGroups(order, candidates, isLinking)}
                       </div>
                     )}
                   </div>

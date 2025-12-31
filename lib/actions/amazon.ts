@@ -13,7 +13,7 @@ const MATCH_LOOKBACK_DAYS = (() => {
   if (Number.isFinite(parsed) && parsed > 0) return parsed
   const windowDays = Number.parseInt(process.env.AMAZON_MATCH_WINDOW_DAYS || '', 10)
   if (Number.isFinite(windowDays) && windowDays > 0) return windowDays
-  return 365
+  return 30
 })()
 
 const MATCH_LOOKAHEAD_DAYS = (() => {
@@ -21,7 +21,7 @@ const MATCH_LOOKAHEAD_DAYS = (() => {
   if (Number.isFinite(parsed) && parsed > 0) return parsed
   const windowDays = Number.parseInt(process.env.AMAZON_MATCH_WINDOW_DAYS || '', 10)
   if (Number.isFinite(windowDays) && windowDays > 0) return windowDays
-  return 7
+  return 30
 })()
 const CREATE_CHUNK_SIZE = 200
 
@@ -467,6 +467,73 @@ export async function matchAmazonOrders(options?: { userId?: string; orderIds?: 
   revalidatePath('/amazon')
   revalidatePath('/')
   return { matched, ambiguous, unmatched }
+}
+
+export async function getAmazonMatchCandidates(orderId: string) {
+  const user = await getOrCreateUser()
+
+  const order = await prisma.amazonOrder.findFirst({
+    where: { id: orderId, userId: user.id },
+    select: { id: true, amazonOrderId: true, orderDate: true, orderTotal: true },
+  })
+
+  if (!order) {
+    throw new Error('Order not found')
+  }
+
+  const linkedTransactions = await prisma.amazonOrderTransaction.findMany({
+    where: {
+      orderId: { not: orderId },
+      order: { userId: user.id },
+    },
+    select: { transactionId: true },
+  })
+
+  const excludeIds = linkedTransactions.map(link => link.transactionId)
+  const orderStart = addDays(order.orderDate, -MATCH_LOOKBACK_DAYS)
+  const orderEnd = addDays(order.orderDate, MATCH_LOOKAHEAD_DAYS)
+  const amazonFilters = buildAmazonKeywordFilters()
+
+  const transactions = await prisma.transaction.findMany({
+    where: {
+      period: { userId: user.id },
+      source: 'import',
+      isIgnored: false,
+      date: { gte: orderStart, lte: orderEnd },
+      ...(amazonFilters.length > 0 ? { OR: amazonFilters } : {}),
+      ...(excludeIds.length > 0 ? { id: { notIn: excludeIds } } : {}),
+    },
+    include: {
+      importBatch: { include: { account: true } },
+    },
+  })
+
+  const transactionsWithAmount = transactions.map(tx => {
+    const accountType = tx.importBatch?.account?.type
+    const expenseAmount = accountType === 'credit_card' ? tx.amount : -tx.amount
+    const accountId = tx.importBatch?.account?.id || null
+    return {
+      id: tx.id,
+      date: tx.date.toISOString().split('T')[0],
+      amount: expenseAmount,
+      description: tx.description,
+      subDescription: tx.subDescription,
+      category: tx.category,
+      roundedAmount: roundCurrency(expenseAmount),
+      dateObj: tx.date,
+      accountId,
+    }
+  }).filter(tx => Number.isFinite(tx.roundedAmount) && tx.roundedAmount > 0)
+
+  const candidates = buildCandidateGroups(order, transactionsWithAmount)
+
+  return {
+    orderId: order.id,
+    amazonOrderId: order.amazonOrderId,
+    windowStart: orderStart.toISOString().split('T')[0],
+    windowEnd: orderEnd.toISOString().split('T')[0],
+    candidates,
+  }
 }
 
 export async function linkAmazonOrder(orderId: string, transactionIds: string[] | null) {
