@@ -341,8 +341,12 @@ export async function matchAmazonOrders(options?: { userId?: string; orderIds?: 
     const expenseAmount = accountType === 'credit_card' ? tx.amount : -tx.amount
     const accountId = tx.importBatch?.account?.id || null
     return {
-      ...tx,
-      expenseAmount,
+      id: tx.id,
+      date: tx.date.toISOString().split('T')[0],
+      amount: expenseAmount,
+      description: tx.description,
+      subDescription: tx.subDescription,
+      category: tx.category,
       roundedAmount: roundCurrency(expenseAmount),
       dateObj: tx.date,
       accountId,
