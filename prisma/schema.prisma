@@ -1,0 +1,237 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                      String                   @id @default(cuid())
+  timezone                String                   @default("America/New_York")
+  currency                String                   @default("USD")
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  preallocationSettings   PreallocationSettings?
+  budgetPeriods           BudgetPeriod[]
+  recurringDefinitions    RecurringDefinition[]
+  accounts                Account[]
+  ignoreRules             IgnoreRule[]
+  recurringSuggestionDismissals RecurringSuggestionDismissal[]
+  categoryMappingRules    CategoryMappingRule[]
+  categoryMappingDismissals CategoryMappingDismissal[]
+}
+
+model PreallocationSettings {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  charityPercent       Float    @default(0)
+  retirementAmount     Float    @default(0)
+  otherSavingsAmount   Float    @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model BudgetPeriod {
+  id               String            @id @default(cuid())
+  userId           String
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  year             Int
+  month            Int               // 1-12
+  status           String            @default("open") // "open" | "locked"
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  incomeItems      IncomeItem[]
+  categoryBudgets  CategoryBudget[]
+  transactions     Transaction[]
+  importBatches    ImportBatch[]
+  transferGroups   TransferGroup[]
+
+  @@unique([userId, year, month])
+}
+
+model IncomeItem {
+  id              String        @id @default(cuid())
+  periodId        String
+  period          BudgetPeriod  @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  date            DateTime
+  source          String
+  amount          Float
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model CategoryBudget {
+  id                String        @id @default(cuid())
+  periodId          String
+  period            BudgetPeriod  @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  category          String
+  amountBudgeted    Float         @default(0)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@unique([periodId, category])
+}
+
+model RecurringDefinition {
+  id                String        @id @default(cuid())
+  userId            String
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category          String        // Must be "Recurring - Essential" or "Recurring - Non-Essential"
+  merchantLabel     String
+  displayLabel      String?
+  nominalAmount     Float
+  frequency         String        // "monthly" | "weekly" | "biweekly" | "twice_monthly"
+  schedulingRule    String        // JSON string with schedule details
+  active            Boolean       @default(true)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  transactions      Transaction[]
+}
+
+model Transaction {
+  id                      String                @id @default(cuid())
+  periodId                String
+  period                  BudgetPeriod          @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  date                    DateTime
+  description             String                // Raw description (immutable from import/manual)
+  subDescription          String?               // Sub-description from CSV (if provided)
+  userDescription         String?               // Optional note
+  amount                  Float
+  category                String
+  status                  String                @default("posted") // "projected" | "posted"
+  source                  String                // "manual" | "recurring" | "import"
+  isIgnored               Boolean               @default(false)
+  isRecurringInstance     Boolean               @default(false)
+  recurringDefinitionId   String?
+  recurringDefinition     RecurringDefinition?  @relation(fields: [recurringDefinitionId], references: [id], onDelete: SetNull)
+  importBatchId           String?
+  importBatch             ImportBatch?          @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+  externalId              String?
+  sourceImportHash        String?
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  transferGroupLeft       TransferGroup?        @relation("LeftTransaction")
+  transferGroupRight      TransferGroup?        @relation("RightTransaction")
+}
+
+model Account {
+  id              String         @id @default(cuid())
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  type            String         // "credit_card" | "bank"
+  displayAlias    String?
+  last4           String?
+  active          Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  importBatches   ImportBatch[]
+  rawImportRows   RawImportRow[]
+}
+
+model ImportBatch {
+  id                    String          @id @default(cuid())
+  accountId             String
+  account               Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  periodId              String
+  period                BudgetPeriod    @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  createdAt             DateTime        @default(now())
+  imported              Int             @default(0)
+  skippedDuplicates     Int             @default(0)
+  ignoredTransfers      Int             @default(0)
+  ignoredByRule         Int             @default(0)
+  matchedRecurring      Int             @default(0)
+  pendingConfirmation   Int             @default(0)
+  rawRows               RawImportRow[]
+  transactions          Transaction[]
+}
+
+model RawImportRow {
+  id                      String        @id @default(cuid())
+  batchId                 String
+  batch                   ImportBatch   @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  accountId               String
+  account                 Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  rawLineNumber           Int
+  rawData                 String        // JSON
+  parsedDate              DateTime
+  parsedDescription       String
+  parsedSubDescription    String?
+  parsedAmountBeforeNorm  Float
+  normalizedAmount        Float
+  normalizedDescription   String
+  externalId              String?
+  hashKey                 String
+  status                  String        @default("pending") // "pending" | "imported" | "duplicate" | "ignored" | "out_of_period"
+  ignoreReason            String?
+  createdAt               DateTime      @default(now())
+
+  @@unique([accountId, hashKey])
+}
+
+model TransferGroup {
+  id                    String        @id @default(cuid())
+  periodId              String
+  period                BudgetPeriod  @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  reason                String        // "credit_card_payment" | "inter_account_transfer"
+  leftTransactionId     String?       @unique
+  leftTransaction       Transaction?  @relation("LeftTransaction", fields: [leftTransactionId], references: [id], onDelete: SetNull)
+  rightTransactionId    String?       @unique
+  rightTransaction      Transaction?  @relation("RightTransaction", fields: [rightTransactionId], references: [id], onDelete: SetNull)
+  status                String        @default("ignored")
+  createdAt             DateTime      @default(now())
+}
+
+model IgnoreRule {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pattern           String
+  normalizedPattern String
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([userId, normalizedPattern])
+}
+
+model RecurringSuggestionDismissal {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  suggestionKey String
+  createdAt     DateTime @default(now())
+
+  @@unique([userId, suggestionKey])
+}
+
+model CategoryMappingRule {
+  id                    String   @id @default(cuid())
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rawDescription        String
+  normalizedDescription String
+  category              String
+  active                Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([userId, normalizedDescription])
+}
+
+model CategoryMappingDismissal {
+  id                    String   @id @default(cuid())
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  normalizedDescription String
+  createdAt             DateTime @default(now())
+
+  @@unique([userId, normalizedDescription])
+}
