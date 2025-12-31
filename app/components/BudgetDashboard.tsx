@@ -758,7 +758,8 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
               filteredTransactions.map((t: any, index: number) => {
                 const amazonLink = t.amazonOrderTransactions?.[0]
                 const amazonOrder = amazonLink?.order
-                const amazonItems = amazonOrder?.items || []
+                const showAmazonOrder = Boolean(amazonOrder && !amazonOrder.isIgnored)
+                const amazonItems = showAmazonOrder ? (amazonOrder?.items || []) : []
                 const amazonItemPreview = amazonItems.slice(0, 3).map((item: any) => item.title).filter(Boolean)
                 const extraAmazonItems = amazonItems.length - amazonItemPreview.length
                 const amazonSplitCount = amazonOrder?._count?.amazonOrderTransactions || 0
@@ -787,7 +788,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                       {t.subDescription && (
                         <div className="text-xs text-monday-3pm">{t.subDescription}</div>
                       )}
-                      {amazonOrder && (
+                      {showAmazonOrder && (
                         <div className="mt-2 text-xs text-monday-3pm space-y-1">
                           <div>
                             Amazon order #{amazonOrder.amazonOrderId} · {formatDateDisplay(amazonOrder.orderDate)} · {formatCurrency(amazonOrder.orderTotal, amazonOrder.currency || 'CAD')}

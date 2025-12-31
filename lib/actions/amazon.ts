@@ -8,9 +8,20 @@ import { roundCurrency } from '@/lib/utils/currency'
 import { CATEGORIES, isRecurringCategory } from '@/lib/constants/categories'
 
 const AMAZON_KEYWORDS = ['amazon', 'amzn', 'amazon.ca']
-const MATCH_WINDOW_DAYS = (() => {
-  const parsed = Number.parseInt(process.env.AMAZON_MATCH_WINDOW_DAYS || '', 10)
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 5
+const MATCH_LOOKBACK_DAYS = (() => {
+  const parsed = Number.parseInt(process.env.AMAZON_MATCH_LOOKBACK_DAYS || '', 10)
+  if (Number.isFinite(parsed) && parsed > 0) return parsed
+  const windowDays = Number.parseInt(process.env.AMAZON_MATCH_WINDOW_DAYS || '', 10)
+  if (Number.isFinite(windowDays) && windowDays > 0) return windowDays
+  return 45
+})()
+
+const MATCH_LOOKAHEAD_DAYS = (() => {
+  const parsed = Number.parseInt(process.env.AMAZON_MATCH_LOOKAHEAD_DAYS || '', 10)
+  if (Number.isFinite(parsed) && parsed > 0) return parsed
+  const windowDays = Number.parseInt(process.env.AMAZON_MATCH_WINDOW_DAYS || '', 10)
+  if (Number.isFinite(windowDays) && windowDays > 0) return windowDays
+  return 7
 })()
 const CREATE_CHUNK_SIZE = 200
 
@@ -291,7 +302,7 @@ export async function matchAmazonOrders(options?: { userId?: string; orderIds?: 
   const orderFilter = options?.orderIds?.length ? { id: { in: options.orderIds } } : {}
 
   const orders = await prisma.amazonOrder.findMany({
-    where: { userId, ...orderFilter },
+    where: { userId, isIgnored: false, ...orderFilter },
     include: { items: true, amazonOrderTransactions: true },
   })
 
@@ -312,8 +323,8 @@ export async function matchAmazonOrders(options?: { userId?: string; orderIds?: 
     (max, order) => (order.orderDate > max ? order.orderDate : max),
     ordersToMatch[0].orderDate
   )
-  const startDate = addDays(minDate, -MATCH_WINDOW_DAYS)
-  const endDate = addDays(maxDate, MATCH_WINDOW_DAYS)
+  const startDate = addDays(minDate, -MATCH_LOOKBACK_DAYS)
+  const endDate = addDays(maxDate, MATCH_LOOKAHEAD_DAYS)
 
   const linkedTransactionIds = new Set(
     orders.flatMap(order => order.amazonOrderTransactions.map(link => link.transactionId))
@@ -357,8 +368,8 @@ export async function matchAmazonOrders(options?: { userId?: string; orderIds?: 
   const transactionUseCounts = new Map<string, number>()
 
   for (const order of ordersToMatch) {
-    const orderStart = addDays(order.orderDate, -MATCH_WINDOW_DAYS)
-    const orderEnd = addDays(order.orderDate, MATCH_WINDOW_DAYS)
+    const orderStart = addDays(order.orderDate, -MATCH_LOOKBACK_DAYS)
+    const orderEnd = addDays(order.orderDate, MATCH_LOOKAHEAD_DAYS)
     const scopedTransactions = transactionsWithAmount.filter(
       tx => tx.dateObj >= orderStart && tx.dateObj <= orderEnd
     )
@@ -528,6 +539,28 @@ export async function linkAmazonOrder(orderId: string, transactionIds: string[] 
   return updated
 }
 
+export async function setAmazonOrderIgnored(orderId: string, isIgnored: boolean) {
+  const user = await getOrCreateUser()
+
+  const order = await prisma.amazonOrder.findFirst({
+    where: { id: orderId, userId: user.id },
+    select: { id: true },
+  })
+
+  if (!order) {
+    throw new Error('Order not found')
+  }
+
+  const updated = await prisma.amazonOrder.update({
+    where: { id: orderId },
+    data: { isIgnored },
+  })
+
+  revalidatePath('/amazon')
+  revalidatePath('/')
+  return updated
+}
+
 export async function categorizeAmazonOrdersWithLLM() {
   const user = await getOrCreateUser()
   const apiKey = process.env.OPENAI_API_KEY
@@ -540,6 +573,7 @@ export async function categorizeAmazonOrdersWithLLM() {
   const orders = await prisma.amazonOrder.findMany({
     where: {
       userId: user.id,
+      isIgnored: false,
       matchStatus: 'matched',
       category: null,
       amazonOrderTransactions: {

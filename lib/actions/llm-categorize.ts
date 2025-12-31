@@ -190,6 +190,7 @@ export async function categorizeTransactionsWithLLM(periodId: string, options: C
   const amazonOrders = await prisma.amazonOrder.findMany({
     where: {
       userId: user.id,
+      isIgnored: false,
       matchStatus: 'matched',
       category: null,
       amazonOrderTransactions: {

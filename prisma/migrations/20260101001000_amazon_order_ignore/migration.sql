@@ -1,0 +1,1 @@
+ALTER TABLE "AmazonOrder" ADD COLUMN "isIgnored" BOOLEAN NOT NULL DEFAULT false;

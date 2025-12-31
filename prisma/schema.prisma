@@ -248,6 +248,7 @@ model AmazonOrder {
   currency             String   @default("CAD")
   orderUrl             String?
   itemCount            Int      @default(0)
+  isIgnored            Boolean  @default(false)
   matchStatus          String   @default("unmatched") // "unmatched" | "matched" | "ambiguous"
   matchMetadata        Json?
   category             String?

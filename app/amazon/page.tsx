@@ -59,6 +59,7 @@ type AmazonOrder = {
   currency: string
   orderUrl?: string | null
   itemCount: number
+  isIgnored: boolean
   matchStatus: 'matched' | 'ambiguous' | 'unmatched'
   matchMetadata?: MatchMetadata | null
   category?: string | null
@@ -79,6 +80,8 @@ function buildBookmarklet(baseUrl: string) {
   const appBase='${safeBase}';
   const normalizeText=(value)=>String(value||'').replace(/\\s+/g,' ').trim();
   const parseMoney=(value)=>{const cleaned=normalizeText(value).replace(/[^0-9.-]/g,'');const parsed=parseFloat(cleaned);return Number.isFinite(parsed)?parsed:null;};
+  const hasCurrencyMarker=(value)=>{const text=normalizeText(value).toLowerCase();return text.includes('$')||text.includes('usd')||text.includes('cad')||text.includes('cdn')||text.includes('gbp')||text.includes('eur');};
+  const isNonMonetaryTotalText=(value)=>{const text=normalizeText(value).toLowerCase();if(!text)return false;if(hasCurrencyMarker(text))return false;return text.includes('audible credit')||text.includes('credit')||text.includes('points')||text.includes('point');};
   const detectCurrency=(value)=>{const text=normalizeText(value).toUpperCase();if(text.includes('US$')||text.includes('USD'))return 'USD';if(text.includes('CDN')||text.includes('CAD'))return 'CAD';if(text.includes('GBP'))return 'GBP';return 'CAD';};
   const formatCount=(count,singular,plural)=>count+' '+(count===1?singular:(plural||singular+'s'));
   const isCancelledText=(value)=>{const text=normalizeText(value).toLowerCase();return text.includes('cancelled')||text.includes('canceled');};
@@ -107,10 +110,10 @@ function buildBookmarklet(baseUrl: string) {
   const extractTotalFromText=(text)=>{const match=normalizeText(text).match(/Total\\s+([A-Z]{0,3}\\$?\\s*[0-9,.]+)/i);return match?match[1]:'';};
   const extractTotalFromDoc=(doc)=>{const text=normalizeText(doc.body?.textContent||'');let match=text.match(/Order total\\s+([A-Z]{0,3}\\$?\\s*[0-9,.]+)/i);if(!match){match=text.match(/Total\\s+([A-Z]{0,3}\\$?\\s*[0-9,.]+)/i);}return match?parseMoney(match[1]):null;};
   const fetchOrderTotalFromDetails=async(url)=>{try{const doc=await loadDetailInFrame(url);await sleep(400);return extractTotalFromDoc(doc);}catch{return null;}};
-  const parseOrder=(card)=>{const orderId=getOrderId(card);const isCancelled=hasCancelledStatus(card);let orderDate=getOrderDateText(card);if(!orderDate){orderDate=extractDateFromText(card.textContent);}let totalText=getOrderTotalText(card);if(!totalText){totalText=extractTotalFromText(card.textContent);}const orderTotal=parseMoney(totalText);const currency=detectCurrency(totalText||'');const itemNodes=[...card.querySelectorAll('.yohtmlc-product-title a, [data-test-id="order-card-product-title"], a[href*="/dp/"]')];const rawItems=[];for(const node of itemNodes){const title=normalizeText(node.textContent);if(!title)continue;const lower=title.toLowerCase();if(lower.includes('view your item')||lower.includes('buy it again'))continue;rawItems.push(title);}if(rawItems.length===0){rawItems.push(...[...card.querySelectorAll('.item-box img[alt]')].map(node=>normalizeText(node.getAttribute('alt'))).filter(Boolean));}const items=Array.from(new Set(rawItems));const orderLink=card.querySelector('a[href*="order-details"]');
+  const parseOrder=(card)=>{const orderId=getOrderId(card);const isCancelled=hasCancelledStatus(card);let orderDate=getOrderDateText(card);if(!orderDate){orderDate=extractDateFromText(card.textContent);}let totalText=getOrderTotalText(card);if(!totalText){totalText=extractTotalFromText(card.textContent);}const isNonMonetaryTotal=isNonMonetaryTotalText(totalText);const orderTotal=isNonMonetaryTotal?null:parseMoney(totalText);const currency=detectCurrency(totalText||'');const itemNodes=[...card.querySelectorAll('.yohtmlc-product-title a, [data-test-id="order-card-product-title"], a[href*="/dp/"]')];const rawItems=[];for(const node of itemNodes){const title=normalizeText(node.textContent);if(!title)continue;const lower=title.toLowerCase();if(lower.includes('view your item')||lower.includes('buy it again'))continue;rawItems.push(title);}if(rawItems.length===0){rawItems.push(...[...card.querySelectorAll('.item-box img[alt]')].map(node=>normalizeText(node.getAttribute('alt'))).filter(Boolean));}const items=Array.from(new Set(rawItems));const orderLink=card.querySelector('a[href*="order-details"]');
   let orderUrl=orderLink?new URL(orderLink.getAttribute('href')||'',location.origin).toString():undefined;
   if(!orderUrl && orderId){const fallbackUrl=new URL('/your-orders/order-details',location.origin);fallbackUrl.searchParams.set('orderID',orderId);orderUrl=fallbackUrl.toString();}
-  return {orderId,orderDate,orderTotal,currency,orderUrl,items,isCancelled};};
+  return {orderId,orderDate,orderTotal,currency,orderUrl,items,isCancelled,isNonMonetaryTotal};};
   const getFirstOrderIdFromCards=(cards)=>{for(const card of cards){const id=getOrderId(card);if(id)return id;}return null;};
   const getStartIndex=(url)=>{try{const parsed=new URL(url,location.origin);const start=Number.parseInt(parsed.searchParams.get('startIndex')||'0',10);return Number.isFinite(start)?start:0;}catch{return 0;}};
   const getSelectedStartIndex=(doc)=>{const selected=doc.querySelector('.a-pagination li.a-selected a[href*="startIndex"]');if(!selected)return null;return getStartIndex(selected.getAttribute('href')||'');};
@@ -140,9 +143,9 @@ function buildBookmarklet(baseUrl: string) {
     token=tokenData.token;
   }
   setStatus('Scanning orders...');
-  let doc=document;let cards=initialCards;let pageUrl=location.href;const scannedOrderIds=new Set();let canceledCount=0;let missingTotalCount=0;let missingDateCount=0;let missingIdCount=0;const orders=[];const pageQueue=buildPageQueue(document,pageUrl,totalCount,pageStep,startIndices,pages,urls);const totalPages=totalCount?Math.max(1,Math.ceil(totalCount/pageStep)):pageQueue.length+1;const seenPages=new Set([pageUrl]);let pageCount=0;
+  let doc=document;let cards=initialCards;let pageUrl=location.href;const scannedOrderIds=new Set();let canceledCount=0;let ignoredNonCashCount=0;let missingTotalCount=0;let missingDateCount=0;let missingIdCount=0;const orders=[];const pageQueue=buildPageQueue(document,pageUrl,totalCount,pageStep,startIndices,pages,urls);const totalPages=totalCount?Math.max(1,Math.ceil(totalCount/pageStep)):pageQueue.length+1;const seenPages=new Set([pageUrl]);let pageCount=0;
   let detailTotalRemaining=15;
-  while(doc&&pageCount<50){pageCount+=1;const startIndex=getStartIndex(pageUrl);const currentPage=Math.floor(startIndex/pageStep)+1;setStatus('Scanning page '+currentPage+(totalPages?(' of '+totalPages):'')+'...');for(const card of cards){const order=parseOrder(card);if(!order)continue;if(!order.orderId){missingIdCount+=1;continue;}if(scannedOrderIds.has(order.orderId))continue;scannedOrderIds.add(order.orderId);const canceled=order.isCancelled||(!order.orderUrl&&order.orderTotal===null);if(canceled){canceledCount+=1;continue;}if(!order.orderDate){missingDateCount+=1;continue;}if(order.orderTotal===null&&order.orderUrl&&detailTotalRemaining>0){detailTotalRemaining-=1;const detailTotal=await fetchOrderTotalFromDetails(order.orderUrl);if(detailTotal!==null){order.orderTotal=detailTotal;}}if(order.orderTotal===null){missingTotalCount+=1;console.warn('Amazon importer: missing order total', {orderId: order.orderId, orderUrl: order.orderUrl});continue;}const { isCancelled: _isCancelled, ...payload } = order;orders.push(payload);}const firstId=getFirstOrderIdFromCards(cards);if(cards.length===0&&doc){console.warn('Amazon importer: no cards found', {pageUrl,title:doc.title});}else if(cards.length&& !firstId){console.warn('Amazon importer: missing order ids', {pageUrl,title:doc.title});}let nextUrl=null;while(pageQueue.length){const candidate=pageQueue.shift();if(candidate&&!seenPages.has(candidate)){nextUrl=candidate;break;}}if(!nextUrl){const fallback=getNextUrl(doc,pageUrl);if(fallback&&!seenPages.has(fallback))nextUrl=fallback;}if(!nextUrl)break;seenPages.add(nextUrl);pageUrl=nextUrl;const expectedStart=getStartIndex(pageUrl);const loaded=await loadPageDocument(pageUrl,expectedStart,baselineFirstId);doc=loaded.doc;cards=loaded.cards;if(!doc)break;if(cards.length===0){console.warn('Amazon importer: empty page', {pageUrl,title:doc.title,source:loaded.source});}else if(loaded.selectedStart!==null&&loaded.selectedStart!==expectedStart){console.warn('Amazon importer: pagination mismatch', {pageUrl,selectedStart:loaded.selectedStart,expectedStart,source:loaded.source});}await sleep(200);}
+  while(doc&&pageCount<50){pageCount+=1;const startIndex=getStartIndex(pageUrl);const currentPage=Math.floor(startIndex/pageStep)+1;setStatus('Scanning page '+currentPage+(totalPages?(' of '+totalPages):'')+'...');for(const card of cards){const order=parseOrder(card);if(!order)continue;if(!order.orderId){missingIdCount+=1;continue;}if(scannedOrderIds.has(order.orderId))continue;scannedOrderIds.add(order.orderId);if(order.isNonMonetaryTotal){ignoredNonCashCount+=1;continue;}const canceled=order.isCancelled||(!order.orderUrl&&order.orderTotal===null);if(canceled){canceledCount+=1;continue;}if(!order.orderDate){missingDateCount+=1;continue;}if(order.orderTotal===null&&order.orderUrl&&detailTotalRemaining>0){detailTotalRemaining-=1;const detailTotal=await fetchOrderTotalFromDetails(order.orderUrl);if(detailTotal!==null){order.orderTotal=detailTotal;}}if(order.orderTotal===null){missingTotalCount+=1;console.warn('Amazon importer: missing order total', {orderId: order.orderId, orderUrl: order.orderUrl});continue;}const { isCancelled: _isCancelled, isNonMonetaryTotal: _isNonMonetaryTotal, ...payload } = order;orders.push(payload);}const firstId=getFirstOrderIdFromCards(cards);if(cards.length===0&&doc){console.warn('Amazon importer: no cards found', {pageUrl,title:doc.title});}else if(cards.length&& !firstId){console.warn('Amazon importer: missing order ids', {pageUrl,title:doc.title});}let nextUrl=null;while(pageQueue.length){const candidate=pageQueue.shift();if(candidate&&!seenPages.has(candidate)){nextUrl=candidate;break;}}if(!nextUrl){const fallback=getNextUrl(doc,pageUrl);if(fallback&&!seenPages.has(fallback))nextUrl=fallback;}if(!nextUrl)break;seenPages.add(nextUrl);pageUrl=nextUrl;const expectedStart=getStartIndex(pageUrl);const loaded=await loadPageDocument(pageUrl,expectedStart,baselineFirstId);doc=loaded.doc;cards=loaded.cards;if(!doc)break;if(cards.length===0){console.warn('Amazon importer: empty page', {pageUrl,title:doc.title,source:loaded.source});}else if(loaded.selectedStart!==null&&loaded.selectedStart!==expectedStart){console.warn('Amazon importer: pagination mismatch', {pageUrl,selectedStart:loaded.selectedStart,expectedStart,source:loaded.source});}await sleep(200);}
   if(pageFrame){pageFrame.remove();}
   if(detailFrame){detailFrame.remove();}
   if(orders.length===0){alert('No orders found on this view. Try scrolling to load orders, then run again.');return;}
@@ -155,6 +158,7 @@ function buildBookmarklet(baseUrl: string) {
   if(scannedTotal){scanParts.push(formatCount(scannedTotal,'order','orders')+' scanned');}
   if(pageCount){scanParts.push(formatCount(pageCount,'page','pages'));}
   if(canceledCount){scanParts.push(formatCount(canceledCount,'canceled order','canceled orders'));}
+  if(ignoredNonCashCount){scanParts.push(formatCount(ignoredNonCashCount,'ignored non-cash order','ignored non-cash orders'));}
   if(missingTotalCount){scanParts.push(formatCount(missingTotalCount,'missing total','missing totals'));}
   if(missingDateCount){scanParts.push(formatCount(missingDateCount,'missing date','missing dates'));}
   if(missingIdCount){scanParts.push(formatCount(missingIdCount,'missing order id','missing order ids'));}
@@ -175,12 +179,14 @@ export default function AmazonPage() {
   const [loadingOrders, setLoadingOrders] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<(typeof STATUS_OPTIONS)[number]>('all')
+  const [showIgnored, setShowIgnored] = useState(false)
   const [tokenInfo, setTokenInfo] = useState<{ token: string; expiresAt: string } | null>(null)
   const [tokenLoading, setTokenLoading] = useState(false)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [tokenMessage, setTokenMessage] = useState<string | null>(null)
   const [matching, setMatching] = useState(false)
   const [linkingIds, setLinkingIds] = useState<Set<string>>(new Set())
+  const [ignoringIds, setIgnoringIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     loadOrders()
@@ -188,8 +194,14 @@ export default function AmazonPage() {
 
   const bookmarklet = useMemo(() => (appBaseUrl ? buildBookmarklet(appBaseUrl) : ''), [appBaseUrl])
 
+  const { visibleOrders, ignoredCount } = useMemo(() => {
+    const ignored = orders.reduce((count, order) => count + (order.isIgnored ? 1 : 0), 0)
+    const visible = showIgnored ? orders : orders.filter(order => !order.isIgnored)
+    return { visibleOrders: visible, ignoredCount: ignored }
+  }, [orders, showIgnored])
+
   const counts = useMemo(() => {
-    return orders.reduce(
+    return visibleOrders.reduce(
       (acc, order) => {
         acc.total += 1
         acc[order.matchStatus] += 1
@@ -197,12 +209,12 @@ export default function AmazonPage() {
       },
       { total: 0, matched: 0, ambiguous: 0, unmatched: 0 }
     )
-  }, [orders])
+  }, [visibleOrders])
 
   const filteredOrders = useMemo(() => {
-    if (statusFilter === 'all') return orders
-    return orders.filter(order => order.matchStatus === statusFilter)
-  }, [orders, statusFilter])
+    if (statusFilter === 'all') return visibleOrders
+    return visibleOrders.filter(order => order.matchStatus === statusFilter)
+  }, [visibleOrders, statusFilter])
 
   async function loadOrders() {
     setLoadingOrders(true)
@@ -222,6 +234,33 @@ export default function AmazonPage() {
       setError('Failed to load Amazon orders.')
     } finally {
       setLoadingOrders(false)
+    }
+  }
+
+  async function toggleIgnore(orderId: string, nextIgnored: boolean) {
+    setStatusMessage(null)
+    setIgnoringIds(prev => new Set(prev).add(orderId))
+    try {
+      const res = await fetch('/api/amazon/ignore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId, isIgnored: nextIgnored }),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(text)
+      }
+      setStatusMessage(nextIgnored ? 'Order ignored.' : 'Order unignored.')
+      await loadOrders()
+    } catch (err: any) {
+      console.error(err)
+      setStatusMessage(err?.message || 'Failed to update order.')
+    } finally {
+      setIgnoringIds(prev => {
+        const next = new Set(prev)
+        next.delete(orderId)
+        return next
+      })
     }
   }
 
@@ -408,6 +447,7 @@ export default function AmazonPage() {
             <div>Matched: {counts.matched}</div>
             <div>Ambiguous: {counts.ambiguous}</div>
             <div>Unmatched: {counts.unmatched}</div>
+            <div>Ignored: {ignoredCount}</div>
             <div className="flex items-center gap-2">
               <label className="text-xs uppercase tracking-wider text-dark font-medium">Filter</label>
               <select
@@ -422,6 +462,15 @@ export default function AmazonPage() {
                 ))}
               </select>
             </div>
+            <label className="flex items-center gap-2 text-xs uppercase tracking-wider text-dark font-medium">
+              <input
+                type="checkbox"
+                checked={showIgnored}
+                onChange={(e) => setShowIgnored(e.target.checked)}
+                className="w-4 h-4 cursor-pointer"
+              />
+              Show ignored
+            </label>
             <div className="flex flex-wrap gap-2 ml-auto">
               <Button variant="secondary" onClick={loadOrders} disabled={loadingOrders}>
                 {loadingOrders ? 'REFRESHING...' : 'REFRESH'}
@@ -445,6 +494,7 @@ export default function AmazonPage() {
               {filteredOrders.map(order => {
                 const candidates = getCandidates(order)
                 const isLinking = linkingIds.has(order.id)
+                const isIgnoring = ignoringIds.has(order.id)
                 const linkedTransactions = (order.amazonOrderTransactions || [])
                   .map(link => link.transaction)
                   .filter(Boolean)
@@ -473,8 +523,16 @@ export default function AmazonPage() {
                           </a>
                         )}
                       </div>
-                      <div className="text-xs uppercase tracking-wider text-dark font-medium">
-                        Status: {order.matchStatus}
+                      <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wider text-dark font-medium">
+                        <span>Status: {order.matchStatus}</span>
+                        {order.isIgnored && <span className="text-monday-3pm">Ignored</span>}
+                        <Button
+                          variant="secondary"
+                          onClick={() => toggleIgnore(order.id, !order.isIgnored)}
+                          disabled={isIgnoring}
+                        >
+                          {isIgnoring ? 'UPDATING...' : (order.isIgnored ? 'UNIGNORE' : 'IGNORE')}
+                        </Button>
                       </div>
                     </div>
 
