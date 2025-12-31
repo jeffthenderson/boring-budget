@@ -67,6 +67,10 @@ Legend: [x] done  [~] partial  [ ] not started
   - Prompt from item list and totals, output category + confidence
   - Reuse OPENAI_MODEL and OPENAI_CATEGORY_CONFIDENCE
   - Apply category to matched transactions and store on order
+- [x] Add split-charge matching (1 order -> 2-3 transactions) with combo matching + uniqueness checks
+- [x] Link Amazon orders to transactions via join table (support multiple transactions per order)
+- [x] Show linked Amazon order details (order id, items, Amazon link) on the budget transactions list
+- [x] Use the budget-page LLM categorizer to categorize linked Amazon orders
 - [ ] Add cleanup + privacy controls:
   - Clear Amazon orders data
   - Store minimal raw data needed for recategorization

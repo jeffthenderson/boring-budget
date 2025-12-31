@@ -36,7 +36,15 @@ type MatchCandidate = {
 }
 
 type MatchMetadata = {
-  candidates: MatchCandidate[]
+  candidates: MatchCandidateGroup[]
+}
+
+type MatchCandidateGroup = {
+  transactionIds: string[]
+  transactions: MatchCandidate[]
+  total: number
+  dateSpanDays: number
+  score: number
 }
 
 function chunkArray<T>(items: T[], size: number): T[][] {
@@ -51,6 +59,95 @@ function addDays(date: Date, days: number) {
   const next = new Date(date)
   next.setDate(next.getDate() + days)
   return next
+}
+
+function daysBetween(a: Date, b: Date) {
+  const diff = Math.abs(a.getTime() - b.getTime())
+  return Math.round(diff / (1000 * 60 * 60 * 24))
+}
+
+type CandidateTransaction = MatchCandidate & {
+  roundedAmount: number
+  dateObj: Date
+  accountId: string | null
+}
+
+function buildCandidateGroups(
+  order: { orderDate: Date; orderTotal: number },
+  transactions: CandidateTransaction[]
+): MatchCandidateGroup[] {
+  const target = roundCurrency(order.orderTotal)
+  if (!Number.isFinite(target) || target <= 0) return []
+
+  const orderDate = order.orderDate
+  const byAccount = new Map<string, CandidateTransaction[]>()
+  for (const tx of transactions) {
+    const key = tx.accountId || 'unknown'
+    if (!byAccount.has(key)) byAccount.set(key, [])
+    byAccount.get(key)!.push(tx)
+  }
+
+  const seen = new Set<string>()
+  const groups: MatchCandidateGroup[] = []
+
+  const addGroup = (txs: CandidateTransaction[]) => {
+    const ids = txs.map(tx => tx.id).sort()
+    const key = ids.join('|')
+    if (seen.has(key)) return
+    seen.add(key)
+
+    const dates = txs.map(tx => tx.dateObj)
+    const minDate = dates.reduce((min, d) => (d < min ? d : min), dates[0])
+    const maxDate = dates.reduce((max, d) => (d > max ? d : max), dates[0])
+    const dateSpanDays = daysBetween(minDate, maxDate)
+    const orderDistance =
+      txs.reduce((sum, tx) => sum + daysBetween(orderDate, tx.dateObj), 0) / txs.length
+    const sizePenalty = (txs.length - 1) * 12
+    const spanPenalty = dateSpanDays * 2
+    const distancePenalty = orderDistance
+    const score = Math.round(100 - sizePenalty - spanPenalty - distancePenalty)
+
+    groups.push({
+      transactionIds: ids,
+      transactions: txs.map(tx => ({
+        id: tx.id,
+        date: tx.dateObj.toISOString().split('T')[0],
+        amount: tx.roundedAmount,
+        description: tx.description,
+        subDescription: tx.subDescription,
+        category: tx.category,
+      })),
+      total: roundCurrency(txs.reduce((sum, tx) => sum + tx.roundedAmount, 0)),
+      dateSpanDays,
+      score,
+    })
+  }
+
+  for (const txs of byAccount.values()) {
+    for (let i = 0; i < txs.length; i += 1) {
+      if (roundCurrency(txs[i].roundedAmount) === target) {
+        addGroup([txs[i]])
+      }
+    }
+    for (let i = 0; i < txs.length; i += 1) {
+      for (let j = i + 1; j < txs.length; j += 1) {
+        if (roundCurrency(txs[i].roundedAmount + txs[j].roundedAmount) === target) {
+          addGroup([txs[i], txs[j]])
+        }
+      }
+    }
+    for (let i = 0; i < txs.length; i += 1) {
+      for (let j = i + 1; j < txs.length; j += 1) {
+        for (let k = j + 1; k < txs.length; k += 1) {
+          if (roundCurrency(txs[i].roundedAmount + txs[j].roundedAmount + txs[k].roundedAmount) === target) {
+            addGroup([txs[i], txs[j], txs[k]])
+          }
+        }
+      }
+    }
+  }
+
+  return groups.sort((a, b) => b.score - a.score).slice(0, 12)
 }
 
 function buildAmazonKeywordFilters() {
@@ -179,7 +276,11 @@ export async function getAmazonOrders() {
     where: { userId: user.id },
     include: {
       items: true,
-      matchedTransaction: true,
+      amazonOrderTransactions: {
+        include: {
+          transaction: true,
+        },
+      },
     },
     orderBy: [{ orderDate: 'desc' }, { createdAt: 'desc' }],
   })
@@ -191,30 +292,33 @@ export async function matchAmazonOrders(options?: { userId?: string; orderIds?: 
 
   const orders = await prisma.amazonOrder.findMany({
     where: { userId, ...orderFilter },
-    include: { items: true },
+    include: { items: true, amazonOrderTransactions: true },
   })
 
   if (orders.length === 0) {
     return { matched: 0, ambiguous: 0, unmatched: 0 }
   }
 
-  const minDate = orders.reduce((min, order) => (order.orderDate < min ? order.orderDate : min), orders[0].orderDate)
-  const maxDate = orders.reduce((max, order) => (order.orderDate > max ? order.orderDate : max), orders[0].orderDate)
+  const ordersToMatch = orders.filter(order => order.amazonOrderTransactions.length === 0)
+  if (ordersToMatch.length === 0) {
+    return { matched: 0, ambiguous: 0, unmatched: 0 }
+  }
+
+  const minDate = ordersToMatch.reduce(
+    (min, order) => (order.orderDate < min ? order.orderDate : min),
+    ordersToMatch[0].orderDate
+  )
+  const maxDate = ordersToMatch.reduce(
+    (max, order) => (order.orderDate > max ? order.orderDate : max),
+    ordersToMatch[0].orderDate
+  )
   const startDate = addDays(minDate, -MATCH_WINDOW_DAYS)
   const endDate = addDays(maxDate, MATCH_WINDOW_DAYS)
 
-  const excludeMatchIds = await prisma.amazonOrder.findMany({
-    where: {
-      userId,
-      matchedTransactionId: { not: null },
-      ...(options?.orderIds?.length ? { id: { notIn: options.orderIds } } : {}),
-    },
-    select: { matchedTransactionId: true },
-  })
-
-  const excludeIds = excludeMatchIds
-    .map(row => row.matchedTransactionId)
-    .filter((id): id is string => Boolean(id))
+  const linkedTransactionIds = new Set(
+    orders.flatMap(order => order.amazonOrderTransactions.map(link => link.transactionId))
+  )
+  const excludeIds = Array.from(linkedTransactionIds)
 
   const amazonFilters = buildAmazonKeywordFilters()
 
@@ -235,89 +339,110 @@ export async function matchAmazonOrders(options?: { userId?: string; orderIds?: 
   const transactionsWithAmount = transactions.map(tx => {
     const accountType = tx.importBatch?.account?.type
     const expenseAmount = accountType === 'credit_card' ? tx.amount : -tx.amount
+    const accountId = tx.importBatch?.account?.id || null
     return {
       ...tx,
       expenseAmount,
       roundedAmount: roundCurrency(expenseAmount),
+      dateObj: tx.date,
+      accountId,
     }
   }).filter(tx => Number.isFinite(tx.roundedAmount) && tx.roundedAmount > 0)
 
-  const candidateMap = new Map<string, MatchCandidate[]>()
-  const txToOrders = new Map<string, Set<string>>()
+  const candidateMap = new Map<string, MatchCandidateGroup[]>()
+  const transactionUseCounts = new Map<string, number>()
 
-  for (const order of orders) {
-    const orderTotal = roundCurrency(order.orderTotal)
+  for (const order of ordersToMatch) {
     const orderStart = addDays(order.orderDate, -MATCH_WINDOW_DAYS)
     const orderEnd = addDays(order.orderDate, MATCH_WINDOW_DAYS)
+    const scopedTransactions = transactionsWithAmount.filter(
+      tx => tx.dateObj >= orderStart && tx.dateObj <= orderEnd
+    )
 
-    const candidates: MatchCandidate[] = []
-    for (const tx of transactionsWithAmount) {
-      if (tx.date < orderStart || tx.date > orderEnd) continue
-      if (roundCurrency(tx.roundedAmount) !== orderTotal) continue
+    const groups = buildCandidateGroups(order, scopedTransactions)
+    candidateMap.set(order.id, groups)
 
-      const candidate: MatchCandidate = {
-        id: tx.id,
-        date: tx.date.toISOString().split('T')[0],
-        amount: roundCurrency(tx.roundedAmount),
-        description: tx.description,
-        subDescription: tx.subDescription,
-        category: tx.category,
-      }
-      candidates.push(candidate)
-
-      if (!txToOrders.has(tx.id)) {
-        txToOrders.set(tx.id, new Set())
-      }
-      txToOrders.get(tx.id)!.add(order.id)
+    const orderTransactionIds = new Set(groups.flatMap(group => group.transactionIds))
+    for (const id of orderTransactionIds) {
+      transactionUseCounts.set(id, (transactionUseCounts.get(id) || 0) + 1)
     }
-
-    candidateMap.set(order.id, candidates)
   }
 
   let matched = 0
   let ambiguous = 0
   let unmatched = 0
   const updates = []
+  const linkRows: { orderId: string; transactionId: string }[] = []
+  const assignedTransactions = new Set<string>()
 
-  for (const order of orders) {
-    const candidates = candidateMap.get(order.id) || []
+  const sortedOrders = [...ordersToMatch].sort((a, b) => {
+    const aCount = candidateMap.get(a.id)?.length || 0
+    const bCount = candidateMap.get(b.id)?.length || 0
+    if (aCount !== bCount) return aCount - bCount
+    return a.orderDate.getTime() - b.orderDate.getTime()
+  })
 
-    if (candidates.length === 1 && txToOrders.get(candidates[0].id)?.size === 1) {
-      matched++
-      updates.push(prisma.amazonOrder.update({
-        where: { id: order.id },
-        data: {
-          matchedTransactionId: candidates[0].id,
-          matchStatus: 'matched',
-          matchMetadata: Prisma.DbNull,
-        },
-      }))
-      continue
-    }
+  for (const order of sortedOrders) {
+    const groups = candidateMap.get(order.id) || []
 
-    if (candidates.length === 0) {
+    if (groups.length === 0) {
       unmatched++
       updates.push(prisma.amazonOrder.update({
         where: { id: order.id },
-        data: {
-          matchedTransactionId: null,
-          matchStatus: 'unmatched',
-          matchMetadata: Prisma.DbNull,
-        },
+        data: { matchStatus: 'unmatched', matchMetadata: Prisma.DbNull },
       }))
       continue
     }
 
-    ambiguous++
-    const metadata: MatchMetadata = { candidates }
+    const availableGroups = groups.filter(group =>
+      group.transactionIds.every(id => !assignedTransactions.has(id))
+    )
+
+    if (availableGroups.length === 0) {
+      ambiguous++
+      const metadata: MatchMetadata = { candidates: groups }
+      updates.push(prisma.amazonOrder.update({
+        where: { id: order.id },
+        data: { matchStatus: 'ambiguous', matchMetadata: metadata as any },
+      }))
+      continue
+    }
+
+    let selectedGroup: MatchCandidateGroup | null = null
+    if (availableGroups.length === 1) {
+      selectedGroup = availableGroups[0]
+    } else {
+      const uniqueGroups = availableGroups.filter(group =>
+        group.transactionIds.every(id => transactionUseCounts.get(id) === 1)
+      )
+      if (uniqueGroups.length === 1) {
+        selectedGroup = uniqueGroups[0]
+      }
+    }
+
+    if (!selectedGroup) {
+      ambiguous++
+      const metadata: MatchMetadata = { candidates: groups }
+      updates.push(prisma.amazonOrder.update({
+        where: { id: order.id },
+        data: { matchStatus: 'ambiguous', matchMetadata: metadata as any },
+      }))
+      continue
+    }
+
+    matched++
+    for (const id of selectedGroup.transactionIds) {
+      assignedTransactions.add(id)
+      linkRows.push({ orderId: order.id, transactionId: id })
+    }
     updates.push(prisma.amazonOrder.update({
       where: { id: order.id },
-      data: {
-        matchedTransactionId: null,
-        matchStatus: 'ambiguous',
-        matchMetadata: metadata as any,
-      },
+      data: { matchStatus: 'matched', matchMetadata: Prisma.DbNull },
     }))
+  }
+
+  if (linkRows.length > 0) {
+    updates.push(prisma.amazonOrderTransaction.createMany({ data: linkRows, skipDuplicates: true }))
   }
 
   if (updates.length > 0) {
@@ -325,44 +450,70 @@ export async function matchAmazonOrders(options?: { userId?: string; orderIds?: 
   }
 
   revalidatePath('/amazon')
+  revalidatePath('/')
   return { matched, ambiguous, unmatched }
 }
 
-export async function linkAmazonOrder(orderId: string, transactionId: string | null) {
+export async function linkAmazonOrder(orderId: string, transactionIds: string[] | null) {
   const user = await getOrCreateUser()
 
-  if (transactionId) {
-    const existing = await prisma.amazonOrder.findFirst({
+  const order = await prisma.amazonOrder.findFirst({
+    where: { id: orderId, userId: user.id },
+    select: { id: true },
+  })
+
+  if (!order) {
+    throw new Error('Order not found')
+  }
+
+  const normalizedIds = Array.from(new Set(
+    (transactionIds || [])
+      .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+      .map(id => id.trim())
+  ))
+
+  if (normalizedIds.length > 0) {
+    const existing = await prisma.amazonOrderTransaction.findMany({
       where: {
-        userId: user.id,
-        matchedTransactionId: transactionId,
-        id: { not: orderId },
+        transactionId: { in: normalizedIds },
+        orderId: { not: orderId },
+        order: { userId: user.id },
       },
-      select: { id: true, amazonOrderId: true },
+      select: { transactionId: true, order: { select: { amazonOrderId: true } } },
     })
 
-    if (existing) {
-      throw new Error(`Transaction already linked to order ${existing.amazonOrderId}`)
+    if (existing.length > 0) {
+      const conflict = existing[0]
+      throw new Error(`Transaction already linked to order ${conflict.order.amazonOrderId}`)
     }
 
-    const transaction = await prisma.transaction.findFirst({
+    const transactions = await prisma.transaction.findMany({
       where: {
-        id: transactionId,
+        id: { in: normalizedIds },
         period: { userId: user.id },
       },
+      select: { id: true },
     })
 
-    if (!transaction) {
+    if (transactions.length !== normalizedIds.length) {
       throw new Error('Transaction not found')
     }
   }
 
-  const matchStatus = transactionId ? 'matched' : 'unmatched'
+  await prisma.amazonOrderTransaction.deleteMany({ where: { orderId } })
+
+  if (normalizedIds.length > 0) {
+    await prisma.amazonOrderTransaction.createMany({
+      data: normalizedIds.map(id => ({ orderId, transactionId: id })),
+      skipDuplicates: true,
+    })
+  }
+
+  const matchStatus = normalizedIds.length > 0 ? 'matched' : 'unmatched'
 
   const updated = await prisma.amazonOrder.update({
     where: { id: orderId },
     data: {
-      matchedTransactionId: transactionId,
       matchStatus,
       matchMetadata: Prisma.DbNull,
     },
@@ -386,18 +537,29 @@ export async function categorizeAmazonOrdersWithLLM() {
     where: {
       userId: user.id,
       matchStatus: 'matched',
-      matchedTransactionId: { not: null },
       category: null,
+      amazonOrderTransactions: {
+        some: {
+          transaction: {
+            category: 'Uncategorized',
+            isIgnored: false,
+          },
+        },
+      },
     },
     include: {
       items: true,
-      matchedTransaction: true,
+      amazonOrderTransactions: {
+        include: { transaction: true },
+      },
     },
     orderBy: { orderDate: 'desc' },
     take: 100,
   })
 
-  const candidates = orders.filter(order => order.matchedTransaction?.category === 'Uncategorized')
+  const candidates = orders.filter(order =>
+    order.amazonOrderTransactions.some(link => link.transaction.category === 'Uncategorized')
+  )
 
   if (candidates.length === 0) {
     return { updated: 0, skipped: 0, total: 0 }
@@ -461,8 +623,9 @@ export async function categorizeAmazonOrdersWithLLM() {
   const parsed = parseLLMResults(content)
 
   const threshold = Number.parseFloat(process.env.OPENAI_CATEGORY_CONFIDENCE || '') || 0.6
-  const updates = []
   let skipped = 0
+  let updatedOrders = 0
+  let updatedTransactions = 0
 
   for (const result of parsed) {
     if (!result?.id) {
@@ -483,35 +646,38 @@ export async function categorizeAmazonOrdersWithLLM() {
       continue
     }
 
-    updates.push(
-      prisma.amazonOrder.update({
-        where: { id: result.id },
-        data: {
-          category,
-          categoryConfidence: confidence,
-        },
-      })
-    )
+    const order = candidates.find(candidate => candidate.id === result.id)
+    if (!order) {
+      skipped++
+      continue
+    }
 
-    updates.push(
-      prisma.transaction.updateMany({
+    await prisma.amazonOrder.update({
+      where: { id: result.id },
+      data: {
+        category,
+        categoryConfidence: confidence,
+      },
+    })
+
+    const transactionIds = order.amazonOrderTransactions.map(link => link.transactionId)
+    if (transactionIds.length > 0) {
+      const txResult = await prisma.transaction.updateMany({
         where: {
-          id: candidates.find(order => order.id === result.id)?.matchedTransactionId || '',
+          id: { in: transactionIds },
           category: 'Uncategorized',
           isIgnored: false,
         },
         data: { category },
       })
-    )
-  }
-
-  if (updates.length > 0) {
-    await prisma.$transaction(updates)
+      updatedTransactions += txResult.count
+    }
+    updatedOrders += 1
   }
 
   revalidatePath('/amazon')
   revalidatePath('/')
-  return { updated: updates.length / 2, skipped, total: candidates.length }
+  return { updated: updatedOrders, updatedTransactions, skipped, total: candidates.length }
 }
 
 type LLMCategoryResult = {

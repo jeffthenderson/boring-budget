@@ -4,14 +4,16 @@ import { linkAmazonOrder } from '@/lib/actions/amazon'
 export async function POST(request: Request) {
   const body = await request.json()
   const orderId = body?.orderId
-  const transactionId = body?.transactionId ?? null
+  const transactionIds = Array.isArray(body?.transactionIds)
+    ? body.transactionIds
+    : (body?.transactionId ? [body.transactionId] : [])
 
   if (!orderId || typeof orderId !== 'string') {
     return NextResponse.json({ error: 'orderId is required.' }, { status: 400 })
   }
 
   try {
-    const updated = await linkAmazonOrder(orderId, transactionId)
+    const updated = await linkAmazonOrder(orderId, transactionIds)
     return NextResponse.json(updated)
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || 'Failed to link order.' }, { status: 400 })

@@ -20,10 +20,35 @@ type MatchCandidate = {
   category: string
 }
 
+type MatchCandidateGroup = {
+  transactionIds: string[]
+  transactions: MatchCandidate[]
+  total: number
+  dateSpanDays?: number
+  score?: number
+}
+
+type MatchMetadata = {
+  candidates?: MatchCandidateGroup[]
+}
+
 type AmazonOrderItem = {
   id: string
   title: string
   quantity: number
+}
+
+type LinkedTransaction = {
+  id: string
+  date: string
+  description: string
+  subDescription?: string | null
+  amount: number
+  category: string
+}
+
+type AmazonOrderTransaction = {
+  transaction: LinkedTransaction
 }
 
 type AmazonOrder = {
@@ -35,18 +60,11 @@ type AmazonOrder = {
   orderUrl?: string | null
   itemCount: number
   matchStatus: 'matched' | 'ambiguous' | 'unmatched'
-  matchMetadata?: { candidates?: MatchCandidate[] } | null
+  matchMetadata?: MatchMetadata | null
   category?: string | null
   categoryConfidence?: number | null
   items: AmazonOrderItem[]
-  matchedTransaction?: {
-    id: string
-    date: string
-    description: string
-    subDescription?: string | null
-    amount: number
-    category: string
-  } | null
+  amazonOrderTransactions?: AmazonOrderTransaction[]
 }
 
 function formatDate(value: string) {
@@ -62,6 +80,9 @@ function buildBookmarklet(baseUrl: string) {
   const normalizeText=(value)=>String(value||'').replace(/\\s+/g,' ').trim();
   const parseMoney=(value)=>{const cleaned=normalizeText(value).replace(/[^0-9.-]/g,'');const parsed=parseFloat(cleaned);return Number.isFinite(parsed)?parsed:null;};
   const detectCurrency=(value)=>{const text=normalizeText(value).toUpperCase();if(text.includes('US$')||text.includes('USD'))return 'USD';if(text.includes('CDN')||text.includes('CAD'))return 'CAD';if(text.includes('GBP'))return 'GBP';return 'CAD';};
+  const formatCount=(count,singular,plural)=>count+' '+(count===1?singular:(plural||singular+'s'));
+  const isCancelledText=(value)=>{const text=normalizeText(value).toLowerCase();return text.includes('cancelled')||text.includes('canceled');};
+  const hasCancelledStatus=(card)=>{const statusNodes=card.querySelectorAll('[data-test-id="order-card-status"], [data-test-id="order-status"], .order-status, .yohtmlc-order-status');for(const node of statusNodes){if(isCancelledText(node.textContent))return true;}return isCancelledText(card.textContent);};
   let statusEl=null;
   const ensureStatus=()=>{if(statusEl)return statusEl;const el=document.createElement('div');el.style.position='fixed';el.style.right='16px';el.style.bottom='16px';el.style.zIndex='999999';el.style.background='rgba(0,0,0,0.85)';el.style.color='#fff';el.style.padding='10px 12px';el.style.borderRadius='6px';el.style.fontSize='12px';el.style.fontFamily='system-ui, -apple-system, sans-serif';el.style.maxWidth='260px';el.style.boxShadow='0 2px 8px rgba(0,0,0,0.2)';el.textContent='Preparing Amazon import...';document.body.appendChild(el);statusEl=el;return el;};
   const setStatus=(text)=>{const el=ensureStatus();el.textContent=text;};
@@ -86,11 +107,10 @@ function buildBookmarklet(baseUrl: string) {
   const extractTotalFromText=(text)=>{const match=normalizeText(text).match(/Total\\s+([A-Z]{0,3}\\$?\\s*[0-9,.]+)/i);return match?match[1]:'';};
   const extractTotalFromDoc=(doc)=>{const text=normalizeText(doc.body?.textContent||'');let match=text.match(/Order total\\s+([A-Z]{0,3}\\$?\\s*[0-9,.]+)/i);if(!match){match=text.match(/Total\\s+([A-Z]{0,3}\\$?\\s*[0-9,.]+)/i);}return match?parseMoney(match[1]):null;};
   const fetchOrderTotalFromDetails=async(url)=>{try{const doc=await loadDetailInFrame(url);await sleep(400);return extractTotalFromDoc(doc);}catch{return null;}};
-  const parseOrder=(card)=>{const orderId=getOrderId(card);let orderDate=getOrderDateText(card);if(!orderDate){orderDate=extractDateFromText(card.textContent);}let totalText=getOrderTotalText(card);if(!totalText){totalText=extractTotalFromText(card.textContent);}const orderTotal=parseMoney(totalText);const currency=detectCurrency(totalText||'');const itemNodes=[...card.querySelectorAll('.yohtmlc-product-title a, [data-test-id="order-card-product-title"], a[href*="/dp/"]')];const rawItems=[];for(const node of itemNodes){const title=normalizeText(node.textContent);if(!title)continue;const lower=title.toLowerCase();if(lower.includes('view your item')||lower.includes('buy it again'))continue;rawItems.push(title);}if(rawItems.length===0){rawItems.push(...[...card.querySelectorAll('.item-box img[alt]')].map(node=>normalizeText(node.getAttribute('alt'))).filter(Boolean));}const items=Array.from(new Set(rawItems));const orderLink=card.querySelector('a[href*="order-details"]');
+  const parseOrder=(card)=>{const orderId=getOrderId(card);const isCancelled=hasCancelledStatus(card);let orderDate=getOrderDateText(card);if(!orderDate){orderDate=extractDateFromText(card.textContent);}let totalText=getOrderTotalText(card);if(!totalText){totalText=extractTotalFromText(card.textContent);}const orderTotal=parseMoney(totalText);const currency=detectCurrency(totalText||'');const itemNodes=[...card.querySelectorAll('.yohtmlc-product-title a, [data-test-id="order-card-product-title"], a[href*="/dp/"]')];const rawItems=[];for(const node of itemNodes){const title=normalizeText(node.textContent);if(!title)continue;const lower=title.toLowerCase();if(lower.includes('view your item')||lower.includes('buy it again'))continue;rawItems.push(title);}if(rawItems.length===0){rawItems.push(...[...card.querySelectorAll('.item-box img[alt]')].map(node=>normalizeText(node.getAttribute('alt'))).filter(Boolean));}const items=Array.from(new Set(rawItems));const orderLink=card.querySelector('a[href*="order-details"]');
   let orderUrl=orderLink?new URL(orderLink.getAttribute('href')||'',location.origin).toString():undefined;
   if(!orderUrl && orderId){const fallbackUrl=new URL('/your-orders/order-details',location.origin);fallbackUrl.searchParams.set('orderID',orderId);orderUrl=fallbackUrl.toString();}
-  if(!orderId||!orderDate){return null;}
-  return {orderId,orderDate,orderTotal,currency,orderUrl,items};};
+  return {orderId,orderDate,orderTotal,currency,orderUrl,items,isCancelled};};
   const getFirstOrderIdFromCards=(cards)=>{for(const card of cards){const id=getOrderId(card);if(id)return id;}return null;};
   const getStartIndex=(url)=>{try{const parsed=new URL(url,location.origin);const start=Number.parseInt(parsed.searchParams.get('startIndex')||'0',10);return Number.isFinite(start)?start:0;}catch{return 0;}};
   const getSelectedStartIndex=(doc)=>{const selected=doc.querySelector('.a-pagination li.a-selected a[href*="startIndex"]');if(!selected)return null;return getStartIndex(selected.getAttribute('href')||'');};
@@ -120,9 +140,9 @@ function buildBookmarklet(baseUrl: string) {
     token=tokenData.token;
   }
   setStatus('Scanning orders...');
-  let doc=document;let cards=initialCards;let pageUrl=location.href;const seen=new Set();const orders=[];const pageQueue=buildPageQueue(document,pageUrl,totalCount,pageStep,startIndices,pages,urls);const totalPages=totalCount?Math.max(1,Math.ceil(totalCount/pageStep)):pageQueue.length+1;const seenPages=new Set([pageUrl]);let pageCount=0;
+  let doc=document;let cards=initialCards;let pageUrl=location.href;const scannedOrderIds=new Set();let canceledCount=0;let missingTotalCount=0;let missingDateCount=0;let missingIdCount=0;const orders=[];const pageQueue=buildPageQueue(document,pageUrl,totalCount,pageStep,startIndices,pages,urls);const totalPages=totalCount?Math.max(1,Math.ceil(totalCount/pageStep)):pageQueue.length+1;const seenPages=new Set([pageUrl]);let pageCount=0;
   let detailTotalRemaining=15;
-  while(doc&&pageCount<50){pageCount+=1;const startIndex=getStartIndex(pageUrl);const currentPage=Math.floor(startIndex/pageStep)+1;setStatus('Scanning page '+currentPage+(totalPages?(' of '+totalPages):'')+'...');for(const card of cards){const order=parseOrder(card);if(!order||seen.has(order.orderId))continue;if(order.orderTotal===null&&order.orderUrl&&detailTotalRemaining>0){detailTotalRemaining-=1;const detailTotal=await fetchOrderTotalFromDetails(order.orderUrl);if(detailTotal!==null){order.orderTotal=detailTotal;}}if(order.orderTotal===null){console.warn('Amazon importer: missing order total', {orderId: order.orderId, orderUrl: order.orderUrl});continue;}seen.add(order.orderId);orders.push(order);}const firstId=getFirstOrderIdFromCards(cards);if(cards.length===0&&doc){console.warn('Amazon importer: no cards found', {pageUrl,title:doc.title});}else if(cards.length&& !firstId){console.warn('Amazon importer: missing order ids', {pageUrl,title:doc.title});}let nextUrl=null;while(pageQueue.length){const candidate=pageQueue.shift();if(candidate&&!seenPages.has(candidate)){nextUrl=candidate;break;}}if(!nextUrl){const fallback=getNextUrl(doc,pageUrl);if(fallback&&!seenPages.has(fallback))nextUrl=fallback;}if(!nextUrl)break;seenPages.add(nextUrl);pageUrl=nextUrl;const expectedStart=getStartIndex(pageUrl);const loaded=await loadPageDocument(pageUrl,expectedStart,baselineFirstId);doc=loaded.doc;cards=loaded.cards;if(!doc)break;if(cards.length===0){console.warn('Amazon importer: empty page', {pageUrl,title:doc.title,source:loaded.source});}else if(loaded.selectedStart!==null&&loaded.selectedStart!==expectedStart){console.warn('Amazon importer: pagination mismatch', {pageUrl,selectedStart:loaded.selectedStart,expectedStart,source:loaded.source});}await sleep(200);}
+  while(doc&&pageCount<50){pageCount+=1;const startIndex=getStartIndex(pageUrl);const currentPage=Math.floor(startIndex/pageStep)+1;setStatus('Scanning page '+currentPage+(totalPages?(' of '+totalPages):'')+'...');for(const card of cards){const order=parseOrder(card);if(!order)continue;if(!order.orderId){missingIdCount+=1;continue;}if(scannedOrderIds.has(order.orderId))continue;scannedOrderIds.add(order.orderId);const canceled=order.isCancelled||(!order.orderUrl&&order.orderTotal===null);if(canceled){canceledCount+=1;continue;}if(!order.orderDate){missingDateCount+=1;continue;}if(order.orderTotal===null&&order.orderUrl&&detailTotalRemaining>0){detailTotalRemaining-=1;const detailTotal=await fetchOrderTotalFromDetails(order.orderUrl);if(detailTotal!==null){order.orderTotal=detailTotal;}}if(order.orderTotal===null){missingTotalCount+=1;console.warn('Amazon importer: missing order total', {orderId: order.orderId, orderUrl: order.orderUrl});continue;}const { isCancelled: _isCancelled, ...payload } = order;orders.push(payload);}const firstId=getFirstOrderIdFromCards(cards);if(cards.length===0&&doc){console.warn('Amazon importer: no cards found', {pageUrl,title:doc.title});}else if(cards.length&& !firstId){console.warn('Amazon importer: missing order ids', {pageUrl,title:doc.title});}let nextUrl=null;while(pageQueue.length){const candidate=pageQueue.shift();if(candidate&&!seenPages.has(candidate)){nextUrl=candidate;break;}}if(!nextUrl){const fallback=getNextUrl(doc,pageUrl);if(fallback&&!seenPages.has(fallback))nextUrl=fallback;}if(!nextUrl)break;seenPages.add(nextUrl);pageUrl=nextUrl;const expectedStart=getStartIndex(pageUrl);const loaded=await loadPageDocument(pageUrl,expectedStart,baselineFirstId);doc=loaded.doc;cards=loaded.cards;if(!doc)break;if(cards.length===0){console.warn('Amazon importer: empty page', {pageUrl,title:doc.title,source:loaded.source});}else if(loaded.selectedStart!==null&&loaded.selectedStart!==expectedStart){console.warn('Amazon importer: pagination mismatch', {pageUrl,selectedStart:loaded.selectedStart,expectedStart,source:loaded.source});}await sleep(200);}
   if(pageFrame){pageFrame.remove();}
   if(detailFrame){detailFrame.remove();}
   if(orders.length===0){alert('No orders found on this view. Try scrolling to load orders, then run again.');return;}
@@ -130,7 +150,18 @@ function buildBookmarklet(baseUrl: string) {
   const importRes=await fetch(appBase+'/api/amazon/import',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},credentials:'omit',body:JSON.stringify({orders,sourceUrl:location.href})});
   if(!importRes.ok){const errText=await importRes.text();alert('Import failed: '+errText);return;}
   const summary=await importRes.json();
-  const doneMessage='Import complete. Created '+summary.created+', skipped '+summary.skipped+', matched '+summary.matched+', ambiguous '+summary.ambiguous+', unmatched '+summary.unmatched+'. Pages scanned: '+pageCount+'.';
+  const scannedTotal=scannedOrderIds.size+missingIdCount;
+  const scanParts=[];
+  if(scannedTotal){scanParts.push(formatCount(scannedTotal,'order','orders')+' scanned');}
+  if(pageCount){scanParts.push(formatCount(pageCount,'page','pages'));}
+  if(canceledCount){scanParts.push(formatCount(canceledCount,'canceled order','canceled orders'));}
+  if(missingTotalCount){scanParts.push(formatCount(missingTotalCount,'missing total','missing totals'));}
+  if(missingDateCount){scanParts.push(formatCount(missingDateCount,'missing date','missing dates'));}
+  if(missingIdCount){scanParts.push(formatCount(missingIdCount,'missing order id','missing order ids'));}
+  scanParts.push(formatCount(orders.length,'order','orders')+' sent for import');
+  const scanSummary=scanParts.length?scanParts.join('. ')+'.':'';
+  const importSummary='Import results: Created '+summary.created+', skipped '+summary.skipped+', matched '+summary.matched+', ambiguous '+summary.ambiguous+', unmatched '+summary.unmatched+'.';
+  const doneMessage=(scanSummary?scanSummary+' ':'')+importSummary;
   finalizeStatus(doneMessage);
   alert(doneMessage);
 })();`
@@ -149,7 +180,6 @@ export default function AmazonPage() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [tokenMessage, setTokenMessage] = useState<string | null>(null)
   const [matching, setMatching] = useState(false)
-  const [categorizing, setCategorizing] = useState(false)
   const [linkingIds, setLinkingIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
@@ -251,34 +281,14 @@ export default function AmazonPage() {
     }
   }
 
-  async function runCategorize() {
-    setCategorizing(true)
-    setStatusMessage(null)
-    try {
-      const res = await fetch('/api/amazon/categorize', { method: 'POST' })
-      const data = await res.json()
-      if (res.ok) {
-        setStatusMessage(`Categorized ${data.updated} orders. Skipped ${data.skipped}.`)
-        await loadOrders()
-      } else {
-        throw new Error(data?.error || 'Failed to categorize.')
-      }
-    } catch (err: any) {
-      console.error(err)
-      setStatusMessage(err?.message || 'Categorization failed.')
-    } finally {
-      setCategorizing(false)
-    }
-  }
-
-  async function linkOrder(orderId: string, transactionId: string | null) {
+  async function linkOrder(orderId: string, transactionIds: string[] | null) {
     setLinkingIds(prev => new Set(prev).add(orderId))
     setStatusMessage(null)
     try {
       const res = await fetch('/api/amazon/link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId, transactionId }),
+        body: JSON.stringify({ orderId, transactionIds }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -312,7 +322,7 @@ export default function AmazonPage() {
           Amazon Orders
         </h1>
         <p className="text-sm text-monday-3pm">
-          Match Amazon orders to existing transactions, then let the LLM categorize them.
+          Match Amazon orders to existing transactions. Use the LLM Categorize button on the budget page to categorize linked orders.
         </p>
       </header>
 
@@ -419,9 +429,6 @@ export default function AmazonPage() {
               <Button variant="secondary" onClick={runMatching} disabled={matching}>
                 {matching ? 'MATCHING...' : 'RE-RUN MATCHING'}
               </Button>
-              <Button onClick={runCategorize} disabled={categorizing}>
-                {categorizing ? 'CATEGORIZING...' : 'CATEGORIZE WITH LLM'}
-              </Button>
             </div>
           </div>
           {error && <div className="mt-3 text-sm text-monday-3pm">{error}</div>}
@@ -438,6 +445,11 @@ export default function AmazonPage() {
               {filteredOrders.map(order => {
                 const candidates = getCandidates(order)
                 const isLinking = linkingIds.has(order.id)
+                const linkedTransactions = (order.amazonOrderTransactions || [])
+                  .map(link => link.transaction)
+                  .filter(Boolean)
+                const linkedTotal = linkedTransactions.reduce((sum, tx) => sum + Math.abs(tx.amount), 0)
+                const isSplit = linkedTransactions.length > 1
 
                 return (
                   <div key={order.id} className="border-b border-cubicle-taupe pb-4 last:border-b-0 last:pb-0">
@@ -477,17 +489,30 @@ export default function AmazonPage() {
                       </div>
                     )}
 
-                    {order.matchStatus === 'matched' && order.matchedTransaction && (
+                    {order.matchStatus === 'matched' && linkedTransactions.length > 0 && (
                       <div className="mt-3 border-t border-cubicle-taupe pt-3">
-                        <div className="text-xs uppercase tracking-wider text-dark font-medium">Matched Transaction</div>
-                        <div className="text-sm text-dark">
-                          {formatDate(order.matchedTransaction.date)} · {formatCurrency(Math.abs(order.matchedTransaction.amount), order.currency || 'CAD')}
+                        <div className="text-xs uppercase tracking-wider text-dark font-medium">
+                          Matched Transactions{isSplit ? ' (Split)' : ''}
                         </div>
-                        <div className="text-xs text-monday-3pm">
-                          {order.matchedTransaction.description}
-                          {order.matchedTransaction.subDescription ? ` · ${order.matchedTransaction.subDescription}` : ''}
+                        {isSplit && (
+                          <div className="text-xs text-monday-3pm">
+                            {linkedTransactions.length} transactions · Total {formatCurrency(linkedTotal, order.currency || 'CAD')}
+                          </div>
+                        )}
+                        <div className="mt-2 space-y-2">
+                          {linkedTransactions.map(tx => (
+                            <div key={tx.id}>
+                              <div className="text-sm text-dark">
+                                {formatDate(tx.date)} · {formatCurrency(Math.abs(tx.amount), order.currency || 'CAD')}
+                              </div>
+                              <div className="text-xs text-monday-3pm">
+                                {tx.description}
+                                {tx.subDescription ? ` · ${tx.subDescription}` : ''}
+                              </div>
+                              <div className="text-xs text-monday-3pm">Category: {tx.category}</div>
+                            </div>
+                          ))}
                         </div>
-                        <div className="text-xs text-monday-3pm">Category: {order.matchedTransaction.category}</div>
                         {order.category && (
                           <div className="text-xs text-monday-3pm">
                             LLM Category: {order.category}
@@ -497,7 +522,7 @@ export default function AmazonPage() {
                         <div className="mt-2">
                           <Button
                             variant="outline"
-                            onClick={() => linkOrder(order.id, null)}
+                            onClick={() => linkOrder(order.id, [])}
                             disabled={isLinking}
                           >
                             {isLinking ? 'UPDATING...' : 'UNLINK'}
@@ -512,26 +537,41 @@ export default function AmazonPage() {
                         {candidates.length === 0 ? (
                           <div className="text-xs text-monday-3pm">No candidates stored.</div>
                         ) : (
-                          candidates.map(candidate => (
-                            <div key={candidate.id} className="flex flex-col gap-2 border-2 border-cubicle-taupe bg-white p-3">
+                          candidates.map((candidateGroup, groupIndex) => {
+                            const groupTransactions = candidateGroup.transactions || []
+                            const groupIds = candidateGroup.transactionIds || groupTransactions.map(tx => tx.id)
+                            const groupKey = groupIds.length ? groupIds.join('-') : `${order.id}-${groupIndex}`
+                            const groupTotal = typeof candidateGroup.total === 'number'
+                              ? candidateGroup.total
+                              : groupTransactions.reduce((sum, tx) => sum + tx.amount, 0)
+
+                            return (
+                              <div
+                                key={groupKey}
+                                className="flex flex-col gap-2 border-2 border-cubicle-taupe bg-white p-3"
+                              >
                               <div className="text-sm text-dark">
-                                {candidate.date} · {formatCurrency(candidate.amount, order.currency || 'CAD')}
+                                Group total: {formatCurrency(groupTotal, order.currency || 'CAD')}
+                                {candidateGroup.dateSpanDays !== undefined && ` · ${candidateGroup.dateSpanDays}d span`}
                               </div>
-                              <div className="text-xs text-monday-3pm">
-                                {candidate.description}
-                                {candidate.subDescription ? ` · ${candidate.subDescription}` : ''}
-                              </div>
-                              <div className="text-xs text-monday-3pm">Category: {candidate.category}</div>
+                              {groupTransactions.map(candidate => (
+                                <div key={candidate.id} className="text-xs text-monday-3pm">
+                                  {candidate.date} · {formatCurrency(candidate.amount, order.currency || 'CAD')} · {candidate.description}
+                                  {candidate.subDescription ? ` · ${candidate.subDescription}` : ''}
+                                  {candidate.category ? ` · ${candidate.category}` : ''}
+                                </div>
+                              ))}
                               <div>
                                 <Button
-                                  onClick={() => linkOrder(order.id, candidate.id)}
+                                  onClick={() => linkOrder(order.id, groupIds)}
                                   disabled={isLinking}
                                 >
-                                  {isLinking ? 'LINKING...' : 'LINK THIS TRANSACTION'}
+                                  {isLinking ? 'LINKING...' : 'LINK THESE TRANSACTIONS'}
                                 </Button>
                               </div>
                             </div>
-                          ))
+                            )
+                          })
                         )}
                       </div>
                     )}

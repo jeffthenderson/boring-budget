@@ -57,6 +57,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
   const [filterStatus, setFilterStatus] = useState('all')
   const [isMatchingRecurring, setIsMatchingRecurring] = useState(false)
   const [isCategorizingWithLLM, setIsCategorizingWithLLM] = useState(false)
+  const [llmScope, setLlmScope] = useState<'period' | 'all'>('period')
   const [isSuggestingBudgets, setIsSuggestingBudgets] = useState(false)
   const [allowBudgetSetup, setAllowBudgetSetup] = useState(false)
 
@@ -360,18 +361,21 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
   async function handleLLMCategorize() {
     if (isCategorizingWithLLM) return
 
+    const scopeLabel = llmScope === 'all' ? 'all months' : 'this month'
     const confirmed = confirm(
-      'Use gpt-5-mini to categorize uncategorized imported expenses for this month?'
+      `Use gpt-5-mini to categorize uncategorized transactions (including linked Amazon orders) for ${scopeLabel}?`
     )
     if (!confirmed) return
 
     setIsCategorizingWithLLM(true)
     try {
-      const result = await categorizeTransactionsWithLLM(period.id)
+      const result = await categorizeTransactionsWithLLM(period.id, { scope: llmScope })
       if (result.updated === 0) {
-        alert('No transactions were categorized.')
+        alert('No transactions or linked Amazon orders were categorized.')
       } else {
-        alert(`Categorized ${result.updated} transactions. Skipped ${result.skipped}.`)
+        const updatedTransactions = result.updatedTransactions ?? 0
+        const updatedOrders = result.updatedOrders ?? 0
+        alert(`Categorized ${updatedTransactions} transactions and ${updatedOrders} Amazon orders. Skipped ${result.skipped}.`)
       }
       router.refresh()
     } catch (error: any) {
@@ -685,6 +689,17 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                 <option value="posted">Posted</option>
               </select>
             </div>
+            <div className="flex gap-2 items-center">
+              <label className="text-xs uppercase">LLM Scope:</label>
+              <select
+                value={llmScope}
+                onChange={(e) => setLlmScope(e.target.value as 'period' | 'all')}
+                className="border-2 border-cubicle-taupe bg-white px-2 py-1 text-sm"
+              >
+                <option value="period">This month</option>
+                <option value="all">All months</option>
+              </select>
+            </div>
             <div className="ml-auto flex gap-2">
               <Button
                 variant="secondary"
@@ -740,86 +755,114 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                 No transactions yet. How... peaceful.
               </div>
             ) : (
-              filteredTransactions.map((t: any, index: number) => (
-                <div
-                  key={t.id}
-                  className={`grid grid-cols-[auto_1fr_2fr_1fr_1fr_1fr_auto] gap-4 items-center py-2 border-b border-cubicle-taupe text-sm ${
-                    t.isIgnored ? 'opacity-60' : ''
-                  }`}
-                >
-                  <div>
-                    <input
-                      type="checkbox"
-                      checked={selectedTransactions.has(t.id)}
-                      onChange={(e) => handleTransactionClick(t.id, index, e as any)}
-                      onClick={(e) => handleTransactionClick(t.id, index, e)}
-                      className="w-4 h-4 cursor-pointer"
-                    />
-                  </div>
-                  <div className="text-xs text-monday-3pm">
-                    {formatDateDisplay(t.date)}
-                  </div>
-                  <div>
-                    <div className="font-medium">{t.description}</div>
-                    {t.subDescription && (
-                      <div className="text-xs text-monday-3pm">{t.subDescription}</div>
-                    )}
-                    <InlineNoteEditor
-                      transactionId={t.id}
-                      note={t.userDescription}
-                      onNoteChange={handleNoteChange}
-                      disabled={t.status === 'projected' && t.source === 'recurring'}
-                    />
-                  </div>
-                  <div>
-                    <InlineCategoryEditor
-                      transactionId={t.id}
-                      currentCategory={t.category}
-                      onCategoryChange={handleCategoryChange}
-                      onRecurringCategorySelected={handleRecurringCategorySelected}
-                      disabled={t.status === 'projected' && t.source === 'recurring'}
-                    />
-                  </div>
-                  <div>{formatCurrency(t.amount)}</div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={`px-2 py-1 text-xs uppercase ${t.status === 'posted' ? 'bg-ceiling-grey' : 'bg-background'}`}>
-                      {t.status}
-                    </span>
-                    {t.isIgnored && (
-                      <span className="px-2 py-1 text-xs uppercase bg-monday-3pm text-white">
-                        ignored
+              filteredTransactions.map((t: any, index: number) => {
+                const amazonLink = t.amazonOrderTransactions?.[0]
+                const amazonOrder = amazonLink?.order
+                const amazonItems = amazonOrder?.items || []
+                const amazonItemPreview = amazonItems.slice(0, 3).map((item: any) => item.title).filter(Boolean)
+                const extraAmazonItems = amazonItems.length - amazonItemPreview.length
+                const amazonSplitCount = amazonOrder?._count?.amazonOrderTransactions || 0
+
+                return (
+                  <div
+                    key={t.id}
+                    className={`grid grid-cols-[auto_1fr_2fr_1fr_1fr_1fr_auto] gap-4 items-center py-2 border-b border-cubicle-taupe text-sm ${
+                      t.isIgnored ? 'opacity-60' : ''
+                    }`}
+                  >
+                    <div>
+                      <input
+                        type="checkbox"
+                        checked={selectedTransactions.has(t.id)}
+                        onChange={(e) => handleTransactionClick(t.id, index, e as any)}
+                        onClick={(e) => handleTransactionClick(t.id, index, e)}
+                        className="w-4 h-4 cursor-pointer"
+                      />
+                    </div>
+                    <div className="text-xs text-monday-3pm">
+                      {formatDateDisplay(t.date)}
+                    </div>
+                    <div>
+                      <div className="font-medium">{t.description}</div>
+                      {t.subDescription && (
+                        <div className="text-xs text-monday-3pm">{t.subDescription}</div>
+                      )}
+                      {amazonOrder && (
+                        <div className="mt-2 text-xs text-monday-3pm space-y-1">
+                          <div>
+                            Amazon order #{amazonOrder.amazonOrderId} · {formatDateDisplay(amazonOrder.orderDate)} · {formatCurrency(amazonOrder.orderTotal, amazonOrder.currency || 'CAD')}
+                            {amazonSplitCount > 1 && ` · split (${amazonSplitCount} transactions)`}
+                          </div>
+                          {amazonItemPreview.length > 0 && (
+                            <div>
+                              Items: {amazonItemPreview.join(', ')}
+                              {extraAmazonItems > 0 && ` +${extraAmazonItems} more`}
+                            </div>
+                          )}
+                          {amazonOrder.orderUrl && (
+                            <a href={amazonOrder.orderUrl} target="_blank" rel="noreferrer" className="hover:underline">
+                              View Amazon order
+                            </a>
+                          )}
+                        </div>
+                      )}
+                      <InlineNoteEditor
+                        transactionId={t.id}
+                        note={t.userDescription}
+                        onNoteChange={handleNoteChange}
+                        disabled={t.status === 'projected' && t.source === 'recurring'}
+                      />
+                    </div>
+                    <div>
+                      <InlineCategoryEditor
+                        transactionId={t.id}
+                        currentCategory={t.category}
+                        onCategoryChange={handleCategoryChange}
+                        onRecurringCategorySelected={handleRecurringCategorySelected}
+                        disabled={t.status === 'projected' && t.source === 'recurring'}
+                      />
+                    </div>
+                    <div>{formatCurrency(t.amount)}</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`px-2 py-1 text-xs uppercase ${t.status === 'posted' ? 'bg-ceiling-grey' : 'bg-background'}`}>
+                        {t.status}
                       </span>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    {t.status === 'projected' && (
-                      <Button onClick={() => markTransactionPosted(t.id)}>
-                        POST
-                      </Button>
-                    )}
-                    {t.source === 'import' && (
+                      {t.isIgnored && (
+                        <span className="px-2 py-1 text-xs uppercase bg-monday-3pm text-white">
+                          ignored
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      {t.status === 'projected' && (
+                        <Button onClick={() => markTransactionPosted(t.id)}>
+                          POST
+                        </Button>
+                      )}
+                      {t.source === 'import' && (
+                        <Button
+                          variant="secondary"
+                          onClick={() => handleIgnoreTransaction(t.id)}
+                        >
+                          IGNORE LIKE THIS
+                        </Button>
+                      )}
                       <Button
                         variant="secondary"
-                        onClick={() => handleIgnoreTransaction(t.id)}
+                        onClick={() => handleToggleIgnore(t.id, !t.isIgnored)}
                       >
-                        IGNORE LIKE THIS
+                        {t.isIgnored ? 'UNIGNORE' : 'IGNORE'}
                       </Button>
-                    )}
-                    <Button
-                      variant="secondary"
-                      onClick={() => handleToggleIgnore(t.id, !t.isIgnored)}
-                    >
-                      {t.isIgnored ? 'UNIGNORE' : 'IGNORE'}
-                    </Button>
-                    <Button
-                      variant="danger"
-                      onClick={() => deleteTransaction(t.id)}
-                    >
-                      DELETE
-                    </Button>
+                      <Button
+                        variant="danger"
+                        onClick={() => deleteTransaction(t.id)}
+                      >
+                        DELETE
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))
+                )
+              })
             )}
           </div>
         </div>

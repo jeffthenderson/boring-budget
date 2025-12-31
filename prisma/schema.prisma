@@ -114,7 +114,7 @@ model Transaction {
   recurringDefinition     RecurringDefinition?  @relation(fields: [recurringDefinitionId], references: [id], onDelete: SetNull)
   importBatchId           String?
   importBatch             ImportBatch?          @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
-  amazonOrder             AmazonOrder?
+  amazonOrderTransactions AmazonOrderTransaction[]
   externalId              String?
   sourceImportHash        String?
   createdAt               DateTime              @default(now())
@@ -249,17 +249,27 @@ model AmazonOrder {
   orderUrl             String?
   itemCount            Int      @default(0)
   matchStatus          String   @default("unmatched") // "unmatched" | "matched" | "ambiguous"
-  matchedTransactionId String? @unique
-  matchedTransaction   Transaction? @relation(fields: [matchedTransactionId], references: [id], onDelete: SetNull)
   matchMetadata        Json?
   category             String?
   categoryConfidence   Float?
   items                AmazonOrderItem[]
+  amazonOrderTransactions AmazonOrderTransaction[]
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
   @@unique([userId, amazonOrderId])
   @@index([userId, orderDate])
+}
+
+model AmazonOrderTransaction {
+  orderId       String
+  transactionId String
+  order         AmazonOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+
+  @@id([orderId, transactionId])
+  @@unique([transactionId])
 }
 
 model AmazonOrderItem {

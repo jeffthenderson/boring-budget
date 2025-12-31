@@ -47,6 +47,16 @@ export async function getCurrentOrCreatePeriod(year?: number, month?: number) {
           importBatch: {
             include: { account: true },
           },
+          amazonOrderTransactions: {
+            include: {
+              order: {
+                include: {
+                  items: true,
+                  _count: { select: { amazonOrderTransactions: true } },
+                },
+              },
+            },
+          },
         },
       },
     },
@@ -92,6 +102,16 @@ export async function createPeriod(year: number, month: number) {
             importBatch: {
               include: { account: true },
             },
+            amazonOrderTransactions: {
+              include: {
+                order: {
+                  include: {
+                    items: true,
+                    _count: { select: { amazonOrderTransactions: true } },
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -124,6 +144,16 @@ export async function createPeriod(year: number, month: number) {
               recurringDefinition: true,
               importBatch: {
                 include: { account: true },
+              },
+              amazonOrderTransactions: {
+                include: {
+                  order: {
+                    include: {
+                      items: true,
+                      _count: { select: { amazonOrderTransactions: true } },
+                    },
+                  },
+                },
               },
             },
           },
