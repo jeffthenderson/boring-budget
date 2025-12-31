@@ -8,7 +8,7 @@ export function Button({
 }: {
   children: React.ReactNode
   onClick?: (e?: React.FormEvent) => void
-  variant?: 'primary' | 'secondary' | 'danger'
+  variant?: 'primary' | 'secondary' | 'danger' | 'outline'
   type?: 'button' | 'submit' | 'reset'
   disabled?: boolean
   className?: string
@@ -19,6 +19,7 @@ export function Button({
     primary: 'border-dark bg-white text-dark hover:bg-ceiling-grey',
     secondary: 'border-cubicle-taupe bg-white text-dark hover:bg-background',
     danger: 'border-dark bg-white text-dark hover:bg-monday-3pm hover:text-white',
+    outline: 'border-dark bg-white text-dark hover:bg-background',
   }
 
   return (
