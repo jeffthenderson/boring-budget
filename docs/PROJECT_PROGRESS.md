@@ -42,5 +42,35 @@ Legend: [x] done  [~] partial  [ ] not started
 ## Notes / next focus
 - Clarify expected sign conventions for imported bank/credit card CSVs
 
+## Amazon order import + categorization (plan)
+- [x] Target amazon.ca order history pages (support URLs like `/your-orders/orders?...` and `/gp/your-account/order-history`)
+- [x] Add data model: AmazonOrder + AmazonOrderItem with dedupe on orderId and userId
+- [x] Add secure ingest endpoint `/api/amazon/import` that accepts payload from a bookmarklet
+  - Allow CORS only for Amazon domains
+  - Auth via passcode prompt that mints a short-lived import token (avoid storing passcode in the page)
+- [x] Build bookmarklet to scrape orders page:
+  - Use the current view URL (timeFilter, startIndex) and follow pagination to collect all orders for that view
+  - Collect order id, date, total, and visible item list from the list page
+  - Optional later: fetch each order detail page for full item list
+- [x] Duplicate detection:
+  - Unique constraint on (userId, orderId)
+  - Import uses upsert/skip duplicates and returns counts (created, skipped)
+- [x] Add UI for Amazon orders:
+  - Import status, counts, last import time
+  - List orders with items, matched transaction, category
+  - Manual link to a transaction when auto match fails
+- [x] Build matching pipeline:
+  - Match Amazon orders to existing transactions by date window and amount
+  - Never create new transactions from Amazon orders
+  - Flag unmatched or ambiguous matches for manual review
+- [x] Add LLM categorizer for Amazon orders:
+  - Prompt from item list and totals, output category + confidence
+  - Reuse OPENAI_MODEL and OPENAI_CATEGORY_CONFIDENCE
+  - Apply category to matched transactions and store on order
+- [ ] Add cleanup + privacy controls:
+  - Clear Amazon orders data
+  - Store minimal raw data needed for recategorization
+- [ ] Tests: order parsing, matching heuristics, and LLM response validation
+
 ## Someday / Maybe
 - Auto-categorize transactions (history first, LLM fallback)

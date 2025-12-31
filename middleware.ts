@@ -6,6 +6,8 @@ const PUBLIC_PATH_PREFIXES = [
   '/login',
   '/api/login',
   '/api/logout',
+  '/api/amazon/token',
+  '/api/amazon/import',
   '/_next',
   '/favicon.ico',
 ]

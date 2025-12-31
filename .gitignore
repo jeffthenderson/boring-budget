@@ -39,6 +39,7 @@ dev.log*
 *.csv
 *.xlsx
 /samples/
+Amazon Order Page/
 
 # vercel
 .vercel

@@ -25,6 +25,7 @@ model User {
   recurringSuggestionDismissals RecurringSuggestionDismissal[]
   categoryMappingRules    CategoryMappingRule[]
   categoryMappingDismissals CategoryMappingDismissal[]
+  amazonOrders            AmazonOrder[]
 }
 
 model PreallocationSettings {
@@ -113,6 +114,7 @@ model Transaction {
   recurringDefinition     RecurringDefinition?  @relation(fields: [recurringDefinitionId], references: [id], onDelete: SetNull)
   importBatchId           String?
   importBatch             ImportBatch?          @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+  amazonOrder             AmazonOrder?
   externalId              String?
   sourceImportHash        String?
   createdAt               DateTime              @default(now())
@@ -234,4 +236,36 @@ model CategoryMappingDismissal {
   createdAt             DateTime @default(now())
 
   @@unique([userId, normalizedDescription])
+}
+
+model AmazonOrder {
+  id                   String   @id @default(cuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amazonOrderId        String
+  orderDate            DateTime
+  orderTotal           Float
+  currency             String   @default("CAD")
+  orderUrl             String?
+  itemCount            Int      @default(0)
+  matchStatus          String   @default("unmatched") // "unmatched" | "matched" | "ambiguous"
+  matchedTransactionId String? @unique
+  matchedTransaction   Transaction? @relation(fields: [matchedTransactionId], references: [id], onDelete: SetNull)
+  matchMetadata        Json?
+  category             String?
+  categoryConfidence   Float?
+  items                AmazonOrderItem[]
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([userId, amazonOrderId])
+  @@index([userId, orderDate])
+}
+
+model AmazonOrderItem {
+  id        String      @id @default(cuid())
+  orderId   String
+  order     AmazonOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  title     String
+  quantity  Int         @default(1)
 }

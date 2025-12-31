@@ -65,6 +65,9 @@ export async function resetAllData() {
   const user = await getOrCreateUser()
 
   await prisma.$transaction([
+    prisma.amazonOrder.deleteMany({
+      where: { userId: user.id },
+    }),
     prisma.transferGroup.deleteMany({
       where: { period: { userId: user.id } },
     }),
@@ -98,5 +101,6 @@ export async function resetAllData() {
   revalidatePath('/import')
   revalidatePath('/recurring')
   revalidatePath('/settings')
+  revalidatePath('/amazon')
   return { success: true }
 }

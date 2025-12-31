@@ -7,6 +7,15 @@ import { CATEGORIES, RECURRING_CATEGORIES } from '@/lib/constants/categories'
 import { roundCurrency } from '@/lib/utils/currency'
 import { generateProjectedTransactions } from './recurring'
 
+function isUniqueConstraintError(error: unknown): boolean {
+  return Boolean(
+    error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error as { code?: string }).code === 'P2002'
+  )
+}
+
 export async function getCurrentOrCreatePeriod(year?: number, month?: number) {
   const user = await getOrCreateUser()
 
@@ -53,42 +62,81 @@ export async function getCurrentOrCreatePeriod(year?: number, month?: number) {
 export async function createPeriod(year: number, month: number) {
   const user = await getOrCreateUser()
 
-  const period = await prisma.budgetPeriod.create({
-    data: {
-      userId: user.id,
-      year,
-      month,
-      status: 'open',
-      categoryBudgets: {
-        create: CATEGORIES.map(category => ({
-          category,
-          amountBudgeted: 0,
-        })),
+  try {
+    const period = await prisma.budgetPeriod.create({
+      data: {
+        userId: user.id,
+        year,
+        month,
+        status: 'open',
+        categoryBudgets: {
+          create: CATEGORIES.map(category => ({
+            category,
+            amountBudgeted: 0,
+          })),
+        },
       },
-    },
-    include: {
-      incomeItems: true,
-      categoryBudgets: true,
-      user: {
-        include: {
-          recurringDefinitions: {
-            where: { active: true },
+      include: {
+        incomeItems: true,
+        categoryBudgets: true,
+        user: {
+          include: {
+            recurringDefinitions: {
+              where: { active: true },
+            },
+          },
+        },
+        transactions: {
+          include: {
+            recurringDefinition: true,
+            importBatch: {
+              include: { account: true },
+            },
           },
         },
       },
-      transactions: {
-        include: {
-          recurringDefinition: true,
-          importBatch: {
-            include: { account: true },
-          },
-        },
-      },
-    },
-  })
+    })
 
-  await generateProjectedTransactions(period.id, year, month)
-  return period
+    await generateProjectedTransactions(period.id, year, month)
+    return period
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      const existing = await prisma.budgetPeriod.findUnique({
+        where: {
+          userId_year_month: {
+            userId: user.id,
+            year,
+            month,
+          },
+        },
+        include: {
+          incomeItems: true,
+          categoryBudgets: true,
+          user: {
+            include: {
+              recurringDefinitions: {
+                where: { active: true },
+              },
+            },
+          },
+          transactions: {
+            include: {
+              recurringDefinition: true,
+              importBatch: {
+                include: { account: true },
+              },
+            },
+          },
+        },
+      })
+
+      if (existing) {
+        return existing
+      }
+    }
+
+    throw error
+  }
 }
 
 export async function togglePeriodLock(periodId: string) {

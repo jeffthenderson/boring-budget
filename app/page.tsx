@@ -36,6 +36,7 @@ export default async function Home({
           <Link href="/" className="text-dark hover:underline">BUDGET</Link>
           <Link href="/recurring" className="text-dark hover:underline">RECURRING</Link>
           <Link href="/accounts" className="text-dark hover:underline">ACCOUNTS</Link>
+          <Link href="/amazon" className="text-dark hover:underline">AMAZON</Link>
           <Link href="/settings" className="text-dark hover:underline">SETTINGS</Link>
           <Link href="/admin" className="text-dark hover:underline">ADMIN</Link>
         </nav>
