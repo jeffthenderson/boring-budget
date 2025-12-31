@@ -203,7 +203,8 @@ function ImportWizard() {
           detectedType,
         })
       } catch (error) {
-        alert(`Error parsing ${file.name}. Please try again.`)
+        const message = error instanceof Error ? error.message : 'Please try again.'
+        alert(`Error parsing ${file.name}. ${message}`)
         console.error(error)
       }
     }

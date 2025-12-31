@@ -13,30 +13,50 @@ export interface CSVParseResult {
 }
 
 export async function parseCSVFile(file: File): Promise<CSVParseResult> {
-  return new Promise((resolve, reject) => {
+  const baseOptions = {
+    header: true,
+    skipEmptyLines: true,
+    transformHeader: (header: string) => header.trim(),
+  }
+
+  const parseWithOptions = (options: Papa.ParseConfig) => new Promise<Papa.ParseResult<any>>((resolve, reject) => {
     Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      worker: true,
-      transformHeader: (header) => header.trim(),
-      complete: (results) => {
-        const headers = results.meta.fields || []
-        const rows = results.data as any[]
-
-        // Extract sample values for column detection
-        const columns: CSVColumn[] = headers.map((name, index) => ({
-          index,
-          name,
-          sampleValues: rows.slice(0, 5).map(row => row[name] || '').filter(Boolean)
-        }))
-
-        resolve({ headers, rows, columns })
-      },
-      error: (error) => {
-        reject(error)
-      }
+      ...options,
+      complete: (results) => resolve(results),
+      error: (error) => reject(error),
     })
   })
+
+  const buildResult = (results: Papa.ParseResult<any>) => {
+    const headers = results.meta.fields || []
+    const rows = (results.data as any[]).filter(row => Object.keys(row || {}).length > 0)
+
+    if (results.errors?.length) {
+      console.warn(`CSV parse warnings for ${file.name}:`, results.errors)
+    }
+
+    if (headers.length === 0 || rows.length === 0) {
+      const errorMessage = results.errors?.[0]?.message || `No rows found in ${file.name}`
+      throw new Error(errorMessage)
+    }
+
+    const columns: CSVColumn[] = headers.map((name, index) => ({
+      index,
+      name,
+      sampleValues: rows.slice(0, 5).map(row => row[name] || '').filter(Boolean),
+    }))
+
+    return { headers, rows, columns }
+  }
+
+  try {
+    const results = await parseWithOptions({ ...baseOptions, worker: true })
+    return buildResult(results)
+  } catch (error) {
+    console.warn(`Worker CSV parse failed for ${file.name}, retrying without worker.`, error)
+    const results = await parseWithOptions({ ...baseOptions, worker: false })
+    return buildResult(results)
+  }
 }
 
 export interface ColumnMapping {
