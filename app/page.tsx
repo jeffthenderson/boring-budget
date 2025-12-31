@@ -16,7 +16,7 @@ export default async function Home({
   const yearParam = yearValue ? Number.parseInt(yearValue, 10) : undefined
   const monthParam = monthValue ? Number.parseInt(monthValue, 10) : undefined
   const year = Number.isFinite(yearParam) ? yearParam : undefined
-  const month = Number.isFinite(monthParam) && monthParam >= 1 && monthParam <= 12
+  const month = typeof monthParam === 'number' && Number.isFinite(monthParam) && monthParam >= 1 && monthParam <= 12
     ? monthParam
     : undefined
 
