@@ -18,7 +18,8 @@ async function isAuthorized(passcode?: string | null) {
   }
 
   const expectedHash = await getExpectedPasscodeHash()
-  const cookieValue = cookies().get(AUTH_COOKIE_NAME)?.value
+  const cookieStore = await cookies()
+  const cookieValue = cookieStore.get(AUTH_COOKIE_NAME)?.value
   return Boolean(expectedHash && cookieValue && cookieValue === expectedHash)
 }
 
