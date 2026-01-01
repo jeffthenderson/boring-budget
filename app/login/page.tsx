@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card } from '../components/Card'
 import { Input } from '../components/Input'
@@ -17,6 +17,80 @@ export default function LoginPage() {
   const [mfaCode, setMfaCode] = useState('')
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null)
   const [mfaChallengeId, setMfaChallengeId] = useState<string | null>(null)
+  const [inviteType, setInviteType] = useState<'invite' | 'recovery' | null>(null)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [invitePassword, setInvitePassword] = useState('')
+  const [invitePasswordConfirm, setInvitePasswordConfirm] = useState('')
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const url = new URL(window.location.href)
+    const hashParams = new URLSearchParams(url.hash.slice(1))
+    const searchParams = url.searchParams
+
+    const type = hashParams.get('type') ?? searchParams.get('type')
+    if (type !== 'invite' && type !== 'recovery') return
+
+    const errorCode = hashParams.get('error') ?? searchParams.get('error')
+    const errorDescription = hashParams.get('error_description') ?? searchParams.get('error_description')
+    if (errorCode || errorDescription) {
+      const message = errorDescription
+        ? decodeURIComponent(errorDescription.replace(/\+/g, ' '))
+        : 'Invite link is invalid or expired.'
+      setError(message)
+      return
+    }
+
+    const accessToken = hashParams.get('access_token')
+    const refreshToken = hashParams.get('refresh_token')
+    const code = searchParams.get('code')
+
+    setLoading(true)
+    setError('')
+
+    const supabase = createSupabaseBrowserClient()
+    const fallbackMessage = type === 'recovery'
+      ? 'Recovery link is invalid or expired.'
+      : 'Invite link is invalid or expired.'
+
+    const exchangeSession = async () => {
+      if (code) {
+        return supabase.auth.exchangeCodeForSession(code)
+      }
+      if (accessToken && refreshToken) {
+        return supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        })
+      }
+      return supabase.auth.getSession()
+    }
+
+    exchangeSession()
+      .then(({ data, error: sessionError }) => {
+        if (sessionError || !data?.session) {
+          setError(sessionError?.message || fallbackMessage)
+          return
+        }
+        setInviteType(type)
+        setInviteEmail(data.session.user.email ?? '')
+      })
+      .catch((err: any) => {
+        setError(err?.message || 'Failed to load invite session.')
+      })
+      .finally(() => {
+        setLoading(false)
+      })
+
+    const cleanUrl = new URL(window.location.href)
+    cleanUrl.hash = ''
+    cleanUrl.searchParams.delete('code')
+    cleanUrl.searchParams.delete('type')
+    cleanUrl.searchParams.delete('error')
+    cleanUrl.searchParams.delete('error_description')
+    window.history.replaceState({}, document.title, cleanUrl.pathname + cleanUrl.search)
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -97,10 +171,71 @@ export default function LoginPage() {
     }
   }
 
+  async function handleSetPassword(e: React.FormEvent) {
+    e.preventDefault()
+    if (!inviteType) return
+
+    if (invitePassword !== invitePasswordConfirm) {
+      setError('Passwords do not match.')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+
+    try {
+      const supabase = createSupabaseBrowserClient()
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: invitePassword,
+      })
+
+      if (updateError) {
+        setError(updateError.message)
+        return
+      }
+
+      router.push('/')
+      router.refresh()
+    } catch (err: any) {
+      setError(err?.message || 'Failed to set password.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen p-4 md:p-8">
-      <Card title="Login">
-        {!needsMfa ? (
+      <Card title={inviteType ? 'Set Password' : 'Login'}>
+        {inviteType ? (
+          <form onSubmit={handleSetPassword} className="space-y-4">
+            <div className="text-xs text-monday-3pm">
+              {inviteType === 'invite'
+                ? 'Finish your invite by setting a password.'
+                : 'Set a new password to regain access.'}
+              {inviteEmail ? ` Signed in as ${inviteEmail}.` : ''}
+            </div>
+            <Input
+              label="Password"
+              type="password"
+              value={invitePassword}
+              onChange={setInvitePassword}
+              required
+            />
+            <Input
+              label="Confirm Password"
+              type="password"
+              value={invitePasswordConfirm}
+              onChange={setInvitePasswordConfirm}
+              required
+            />
+            <Button type="submit" disabled={loading}>
+              {loading ? 'SAVING...' : 'SET PASSWORD'}
+            </Button>
+            {error && (
+              <div className="text-sm text-monday-3pm">{error}</div>
+            )}
+          </form>
+        ) : !needsMfa ? (
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
               label="Email"

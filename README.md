@@ -54,6 +54,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 Authentication is handled by Supabase Auth with per-user sessions and optional MFA.
 
 Visit `/login` to sign in. Accounts are invite-only. Sessions are enforced in middleware.
+See `docs/STAGING_ROLLOUT.md` for staging rollout and RLS verification steps.
 
 ### Environment Variables
 

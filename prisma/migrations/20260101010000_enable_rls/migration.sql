@@ -41,94 +41,94 @@ ALTER TABLE "AmazonOrderItem" FORCE ROW LEVEL SECURITY;
 
 -- User-owned tables
 CREATE POLICY "User select" ON "User"
-  FOR SELECT USING (id = auth.uid());
+  FOR SELECT USING (id = auth.uid()::text);
 CREATE POLICY "User insert" ON "User"
-  FOR INSERT WITH CHECK (id = auth.uid());
+  FOR INSERT WITH CHECK (id = auth.uid()::text);
 CREATE POLICY "User update" ON "User"
-  FOR UPDATE USING (id = auth.uid()) WITH CHECK (id = auth.uid());
+  FOR UPDATE USING (id = auth.uid()::text) WITH CHECK (id = auth.uid()::text);
 CREATE POLICY "User delete" ON "User"
-  FOR DELETE USING (id = auth.uid());
+  FOR DELETE USING (id = auth.uid()::text);
 
 CREATE POLICY "PreallocationSettings select" ON "PreallocationSettings"
-  FOR SELECT USING (userId = auth.uid());
+  FOR SELECT USING ("userId" = auth.uid()::text);
 CREATE POLICY "PreallocationSettings insert" ON "PreallocationSettings"
-  FOR INSERT WITH CHECK (userId = auth.uid());
+  FOR INSERT WITH CHECK ("userId" = auth.uid()::text);
 CREATE POLICY "PreallocationSettings update" ON "PreallocationSettings"
-  FOR UPDATE USING (userId = auth.uid()) WITH CHECK (userId = auth.uid());
+  FOR UPDATE USING ("userId" = auth.uid()::text) WITH CHECK ("userId" = auth.uid()::text);
 CREATE POLICY "PreallocationSettings delete" ON "PreallocationSettings"
-  FOR DELETE USING (userId = auth.uid());
+  FOR DELETE USING ("userId" = auth.uid()::text);
 
 CREATE POLICY "BudgetPeriod select" ON "BudgetPeriod"
-  FOR SELECT USING (userId = auth.uid());
+  FOR SELECT USING ("userId" = auth.uid()::text);
 CREATE POLICY "BudgetPeriod insert" ON "BudgetPeriod"
-  FOR INSERT WITH CHECK (userId = auth.uid());
+  FOR INSERT WITH CHECK ("userId" = auth.uid()::text);
 CREATE POLICY "BudgetPeriod update" ON "BudgetPeriod"
-  FOR UPDATE USING (userId = auth.uid()) WITH CHECK (userId = auth.uid());
+  FOR UPDATE USING ("userId" = auth.uid()::text) WITH CHECK ("userId" = auth.uid()::text);
 CREATE POLICY "BudgetPeriod delete" ON "BudgetPeriod"
-  FOR DELETE USING (userId = auth.uid());
+  FOR DELETE USING ("userId" = auth.uid()::text);
 
 CREATE POLICY "RecurringDefinition select" ON "RecurringDefinition"
-  FOR SELECT USING (userId = auth.uid());
+  FOR SELECT USING ("userId" = auth.uid()::text);
 CREATE POLICY "RecurringDefinition insert" ON "RecurringDefinition"
-  FOR INSERT WITH CHECK (userId = auth.uid());
+  FOR INSERT WITH CHECK ("userId" = auth.uid()::text);
 CREATE POLICY "RecurringDefinition update" ON "RecurringDefinition"
-  FOR UPDATE USING (userId = auth.uid()) WITH CHECK (userId = auth.uid());
+  FOR UPDATE USING ("userId" = auth.uid()::text) WITH CHECK ("userId" = auth.uid()::text);
 CREATE POLICY "RecurringDefinition delete" ON "RecurringDefinition"
-  FOR DELETE USING (userId = auth.uid());
+  FOR DELETE USING ("userId" = auth.uid()::text);
 
 CREATE POLICY "Account select" ON "Account"
-  FOR SELECT USING (userId = auth.uid());
+  FOR SELECT USING ("userId" = auth.uid()::text);
 CREATE POLICY "Account insert" ON "Account"
-  FOR INSERT WITH CHECK (userId = auth.uid());
+  FOR INSERT WITH CHECK ("userId" = auth.uid()::text);
 CREATE POLICY "Account update" ON "Account"
-  FOR UPDATE USING (userId = auth.uid()) WITH CHECK (userId = auth.uid());
+  FOR UPDATE USING ("userId" = auth.uid()::text) WITH CHECK ("userId" = auth.uid()::text);
 CREATE POLICY "Account delete" ON "Account"
-  FOR DELETE USING (userId = auth.uid());
+  FOR DELETE USING ("userId" = auth.uid()::text);
 
 CREATE POLICY "IgnoreRule select" ON "IgnoreRule"
-  FOR SELECT USING (userId = auth.uid());
+  FOR SELECT USING ("userId" = auth.uid()::text);
 CREATE POLICY "IgnoreRule insert" ON "IgnoreRule"
-  FOR INSERT WITH CHECK (userId = auth.uid());
+  FOR INSERT WITH CHECK ("userId" = auth.uid()::text);
 CREATE POLICY "IgnoreRule update" ON "IgnoreRule"
-  FOR UPDATE USING (userId = auth.uid()) WITH CHECK (userId = auth.uid());
+  FOR UPDATE USING ("userId" = auth.uid()::text) WITH CHECK ("userId" = auth.uid()::text);
 CREATE POLICY "IgnoreRule delete" ON "IgnoreRule"
-  FOR DELETE USING (userId = auth.uid());
+  FOR DELETE USING ("userId" = auth.uid()::text);
 
 CREATE POLICY "RecurringSuggestionDismissal select" ON "RecurringSuggestionDismissal"
-  FOR SELECT USING (userId = auth.uid());
+  FOR SELECT USING ("userId" = auth.uid()::text);
 CREATE POLICY "RecurringSuggestionDismissal insert" ON "RecurringSuggestionDismissal"
-  FOR INSERT WITH CHECK (userId = auth.uid());
+  FOR INSERT WITH CHECK ("userId" = auth.uid()::text);
 CREATE POLICY "RecurringSuggestionDismissal update" ON "RecurringSuggestionDismissal"
-  FOR UPDATE USING (userId = auth.uid()) WITH CHECK (userId = auth.uid());
+  FOR UPDATE USING ("userId" = auth.uid()::text) WITH CHECK ("userId" = auth.uid()::text);
 CREATE POLICY "RecurringSuggestionDismissal delete" ON "RecurringSuggestionDismissal"
-  FOR DELETE USING (userId = auth.uid());
+  FOR DELETE USING ("userId" = auth.uid()::text);
 
 CREATE POLICY "CategoryMappingRule select" ON "CategoryMappingRule"
-  FOR SELECT USING (userId = auth.uid());
+  FOR SELECT USING ("userId" = auth.uid()::text);
 CREATE POLICY "CategoryMappingRule insert" ON "CategoryMappingRule"
-  FOR INSERT WITH CHECK (userId = auth.uid());
+  FOR INSERT WITH CHECK ("userId" = auth.uid()::text);
 CREATE POLICY "CategoryMappingRule update" ON "CategoryMappingRule"
-  FOR UPDATE USING (userId = auth.uid()) WITH CHECK (userId = auth.uid());
+  FOR UPDATE USING ("userId" = auth.uid()::text) WITH CHECK ("userId" = auth.uid()::text);
 CREATE POLICY "CategoryMappingRule delete" ON "CategoryMappingRule"
-  FOR DELETE USING (userId = auth.uid());
+  FOR DELETE USING ("userId" = auth.uid()::text);
 
 CREATE POLICY "CategoryMappingDismissal select" ON "CategoryMappingDismissal"
-  FOR SELECT USING (userId = auth.uid());
+  FOR SELECT USING ("userId" = auth.uid()::text);
 CREATE POLICY "CategoryMappingDismissal insert" ON "CategoryMappingDismissal"
-  FOR INSERT WITH CHECK (userId = auth.uid());
+  FOR INSERT WITH CHECK ("userId" = auth.uid()::text);
 CREATE POLICY "CategoryMappingDismissal update" ON "CategoryMappingDismissal"
-  FOR UPDATE USING (userId = auth.uid()) WITH CHECK (userId = auth.uid());
+  FOR UPDATE USING ("userId" = auth.uid()::text) WITH CHECK ("userId" = auth.uid()::text);
 CREATE POLICY "CategoryMappingDismissal delete" ON "CategoryMappingDismissal"
-  FOR DELETE USING (userId = auth.uid());
+  FOR DELETE USING ("userId" = auth.uid()::text);
 
 CREATE POLICY "AmazonOrder select" ON "AmazonOrder"
-  FOR SELECT USING (userId = auth.uid());
+  FOR SELECT USING ("userId" = auth.uid()::text);
 CREATE POLICY "AmazonOrder insert" ON "AmazonOrder"
-  FOR INSERT WITH CHECK (userId = auth.uid());
+  FOR INSERT WITH CHECK ("userId" = auth.uid()::text);
 CREATE POLICY "AmazonOrder update" ON "AmazonOrder"
-  FOR UPDATE USING (userId = auth.uid()) WITH CHECK (userId = auth.uid());
+  FOR UPDATE USING ("userId" = auth.uid()::text) WITH CHECK ("userId" = auth.uid()::text);
 CREATE POLICY "AmazonOrder delete" ON "AmazonOrder"
-  FOR DELETE USING (userId = auth.uid());
+  FOR DELETE USING ("userId" = auth.uid()::text);
 
 -- Tables owned through parent relations
 CREATE POLICY "IncomeItem select" ON "IncomeItem"
@@ -136,7 +136,7 @@ CREATE POLICY "IncomeItem select" ON "IncomeItem"
     EXISTS (
       SELECT 1 FROM "BudgetPeriod"
       WHERE "BudgetPeriod".id = "IncomeItem"."periodId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "IncomeItem insert" ON "IncomeItem"
@@ -144,7 +144,7 @@ CREATE POLICY "IncomeItem insert" ON "IncomeItem"
     EXISTS (
       SELECT 1 FROM "BudgetPeriod"
       WHERE "BudgetPeriod".id = "IncomeItem"."periodId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "IncomeItem update" ON "IncomeItem"
@@ -152,13 +152,13 @@ CREATE POLICY "IncomeItem update" ON "IncomeItem"
     EXISTS (
       SELECT 1 FROM "BudgetPeriod"
       WHERE "BudgetPeriod".id = "IncomeItem"."periodId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   ) WITH CHECK (
     EXISTS (
       SELECT 1 FROM "BudgetPeriod"
       WHERE "BudgetPeriod".id = "IncomeItem"."periodId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "IncomeItem delete" ON "IncomeItem"
@@ -166,7 +166,7 @@ CREATE POLICY "IncomeItem delete" ON "IncomeItem"
     EXISTS (
       SELECT 1 FROM "BudgetPeriod"
       WHERE "BudgetPeriod".id = "IncomeItem"."periodId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   );
 
@@ -175,7 +175,7 @@ CREATE POLICY "CategoryBudget select" ON "CategoryBudget"
     EXISTS (
       SELECT 1 FROM "BudgetPeriod"
       WHERE "BudgetPeriod".id = "CategoryBudget"."periodId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "CategoryBudget insert" ON "CategoryBudget"
@@ -183,7 +183,7 @@ CREATE POLICY "CategoryBudget insert" ON "CategoryBudget"
     EXISTS (
       SELECT 1 FROM "BudgetPeriod"
       WHERE "BudgetPeriod".id = "CategoryBudget"."periodId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "CategoryBudget update" ON "CategoryBudget"
@@ -191,13 +191,13 @@ CREATE POLICY "CategoryBudget update" ON "CategoryBudget"
     EXISTS (
       SELECT 1 FROM "BudgetPeriod"
       WHERE "BudgetPeriod".id = "CategoryBudget"."periodId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   ) WITH CHECK (
     EXISTS (
       SELECT 1 FROM "BudgetPeriod"
       WHERE "BudgetPeriod".id = "CategoryBudget"."periodId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "CategoryBudget delete" ON "CategoryBudget"
@@ -205,7 +205,7 @@ CREATE POLICY "CategoryBudget delete" ON "CategoryBudget"
     EXISTS (
       SELECT 1 FROM "BudgetPeriod"
       WHERE "BudgetPeriod".id = "CategoryBudget"."periodId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   );
 
@@ -214,7 +214,7 @@ CREATE POLICY "Transaction select" ON "Transaction"
     EXISTS (
       SELECT 1 FROM "BudgetPeriod"
       WHERE "BudgetPeriod".id = "Transaction"."periodId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "Transaction insert" ON "Transaction"
@@ -222,7 +222,7 @@ CREATE POLICY "Transaction insert" ON "Transaction"
     EXISTS (
       SELECT 1 FROM "BudgetPeriod"
       WHERE "BudgetPeriod".id = "Transaction"."periodId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "Transaction update" ON "Transaction"
@@ -230,13 +230,13 @@ CREATE POLICY "Transaction update" ON "Transaction"
     EXISTS (
       SELECT 1 FROM "BudgetPeriod"
       WHERE "BudgetPeriod".id = "Transaction"."periodId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   ) WITH CHECK (
     EXISTS (
       SELECT 1 FROM "BudgetPeriod"
       WHERE "BudgetPeriod".id = "Transaction"."periodId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "Transaction delete" ON "Transaction"
@@ -244,7 +244,7 @@ CREATE POLICY "Transaction delete" ON "Transaction"
     EXISTS (
       SELECT 1 FROM "BudgetPeriod"
       WHERE "BudgetPeriod".id = "Transaction"."periodId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   );
 
@@ -254,7 +254,13 @@ CREATE POLICY "TransactionLink select" ON "TransactionLink"
       SELECT 1 FROM "Transaction"
       JOIN "BudgetPeriod" ON "BudgetPeriod".id = "Transaction"."periodId"
       WHERE "Transaction".id = "TransactionLink"."fromTransactionId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
+    )
+    AND EXISTS (
+      SELECT 1 FROM "Transaction"
+      JOIN "BudgetPeriod" ON "BudgetPeriod".id = "Transaction"."periodId"
+      WHERE "Transaction".id = "TransactionLink"."toTransactionId"
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "TransactionLink insert" ON "TransactionLink"
@@ -263,13 +269,13 @@ CREATE POLICY "TransactionLink insert" ON "TransactionLink"
       SELECT 1 FROM "Transaction"
       JOIN "BudgetPeriod" ON "BudgetPeriod".id = "Transaction"."periodId"
       WHERE "Transaction".id = "TransactionLink"."fromTransactionId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
     AND EXISTS (
       SELECT 1 FROM "Transaction"
       JOIN "BudgetPeriod" ON "BudgetPeriod".id = "Transaction"."periodId"
       WHERE "Transaction".id = "TransactionLink"."toTransactionId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "TransactionLink update" ON "TransactionLink"
@@ -278,14 +284,26 @@ CREATE POLICY "TransactionLink update" ON "TransactionLink"
       SELECT 1 FROM "Transaction"
       JOIN "BudgetPeriod" ON "BudgetPeriod".id = "Transaction"."periodId"
       WHERE "Transaction".id = "TransactionLink"."fromTransactionId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
+    )
+    AND EXISTS (
+      SELECT 1 FROM "Transaction"
+      JOIN "BudgetPeriod" ON "BudgetPeriod".id = "Transaction"."periodId"
+      WHERE "Transaction".id = "TransactionLink"."toTransactionId"
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   ) WITH CHECK (
     EXISTS (
       SELECT 1 FROM "Transaction"
       JOIN "BudgetPeriod" ON "BudgetPeriod".id = "Transaction"."periodId"
       WHERE "Transaction".id = "TransactionLink"."fromTransactionId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
+    )
+    AND EXISTS (
+      SELECT 1 FROM "Transaction"
+      JOIN "BudgetPeriod" ON "BudgetPeriod".id = "Transaction"."periodId"
+      WHERE "Transaction".id = "TransactionLink"."toTransactionId"
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "TransactionLink delete" ON "TransactionLink"
@@ -294,7 +312,13 @@ CREATE POLICY "TransactionLink delete" ON "TransactionLink"
       SELECT 1 FROM "Transaction"
       JOIN "BudgetPeriod" ON "BudgetPeriod".id = "Transaction"."periodId"
       WHERE "Transaction".id = "TransactionLink"."fromTransactionId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
+    )
+    AND EXISTS (
+      SELECT 1 FROM "Transaction"
+      JOIN "BudgetPeriod" ON "BudgetPeriod".id = "Transaction"."periodId"
+      WHERE "Transaction".id = "TransactionLink"."toTransactionId"
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   );
 
@@ -303,7 +327,7 @@ CREATE POLICY "ImportBatch select" ON "ImportBatch"
     EXISTS (
       SELECT 1 FROM "Account"
       WHERE "Account".id = "ImportBatch"."accountId"
-        AND "Account"."userId" = auth.uid()
+        AND "Account"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "ImportBatch insert" ON "ImportBatch"
@@ -311,7 +335,7 @@ CREATE POLICY "ImportBatch insert" ON "ImportBatch"
     EXISTS (
       SELECT 1 FROM "Account"
       WHERE "Account".id = "ImportBatch"."accountId"
-        AND "Account"."userId" = auth.uid()
+        AND "Account"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "ImportBatch update" ON "ImportBatch"
@@ -319,13 +343,13 @@ CREATE POLICY "ImportBatch update" ON "ImportBatch"
     EXISTS (
       SELECT 1 FROM "Account"
       WHERE "Account".id = "ImportBatch"."accountId"
-        AND "Account"."userId" = auth.uid()
+        AND "Account"."userId" = auth.uid()::text
     )
   ) WITH CHECK (
     EXISTS (
       SELECT 1 FROM "Account"
       WHERE "Account".id = "ImportBatch"."accountId"
-        AND "Account"."userId" = auth.uid()
+        AND "Account"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "ImportBatch delete" ON "ImportBatch"
@@ -333,7 +357,7 @@ CREATE POLICY "ImportBatch delete" ON "ImportBatch"
     EXISTS (
       SELECT 1 FROM "Account"
       WHERE "Account".id = "ImportBatch"."accountId"
-        AND "Account"."userId" = auth.uid()
+        AND "Account"."userId" = auth.uid()::text
     )
   );
 
@@ -342,7 +366,7 @@ CREATE POLICY "RawImportRow select" ON "RawImportRow"
     EXISTS (
       SELECT 1 FROM "Account"
       WHERE "Account".id = "RawImportRow"."accountId"
-        AND "Account"."userId" = auth.uid()
+        AND "Account"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "RawImportRow insert" ON "RawImportRow"
@@ -350,7 +374,7 @@ CREATE POLICY "RawImportRow insert" ON "RawImportRow"
     EXISTS (
       SELECT 1 FROM "Account"
       WHERE "Account".id = "RawImportRow"."accountId"
-        AND "Account"."userId" = auth.uid()
+        AND "Account"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "RawImportRow update" ON "RawImportRow"
@@ -358,13 +382,13 @@ CREATE POLICY "RawImportRow update" ON "RawImportRow"
     EXISTS (
       SELECT 1 FROM "Account"
       WHERE "Account".id = "RawImportRow"."accountId"
-        AND "Account"."userId" = auth.uid()
+        AND "Account"."userId" = auth.uid()::text
     )
   ) WITH CHECK (
     EXISTS (
       SELECT 1 FROM "Account"
       WHERE "Account".id = "RawImportRow"."accountId"
-        AND "Account"."userId" = auth.uid()
+        AND "Account"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "RawImportRow delete" ON "RawImportRow"
@@ -372,7 +396,7 @@ CREATE POLICY "RawImportRow delete" ON "RawImportRow"
     EXISTS (
       SELECT 1 FROM "Account"
       WHERE "Account".id = "RawImportRow"."accountId"
-        AND "Account"."userId" = auth.uid()
+        AND "Account"."userId" = auth.uid()::text
     )
   );
 
@@ -381,7 +405,7 @@ CREATE POLICY "TransferGroup select" ON "TransferGroup"
     EXISTS (
       SELECT 1 FROM "BudgetPeriod"
       WHERE "BudgetPeriod".id = "TransferGroup"."periodId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "TransferGroup insert" ON "TransferGroup"
@@ -389,7 +413,7 @@ CREATE POLICY "TransferGroup insert" ON "TransferGroup"
     EXISTS (
       SELECT 1 FROM "BudgetPeriod"
       WHERE "BudgetPeriod".id = "TransferGroup"."periodId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "TransferGroup update" ON "TransferGroup"
@@ -397,13 +421,13 @@ CREATE POLICY "TransferGroup update" ON "TransferGroup"
     EXISTS (
       SELECT 1 FROM "BudgetPeriod"
       WHERE "BudgetPeriod".id = "TransferGroup"."periodId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   ) WITH CHECK (
     EXISTS (
       SELECT 1 FROM "BudgetPeriod"
       WHERE "BudgetPeriod".id = "TransferGroup"."periodId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "TransferGroup delete" ON "TransferGroup"
@@ -411,7 +435,7 @@ CREATE POLICY "TransferGroup delete" ON "TransferGroup"
     EXISTS (
       SELECT 1 FROM "BudgetPeriod"
       WHERE "BudgetPeriod".id = "TransferGroup"."periodId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   );
 
@@ -420,7 +444,13 @@ CREATE POLICY "AmazonOrderTransaction select" ON "AmazonOrderTransaction"
     EXISTS (
       SELECT 1 FROM "AmazonOrder"
       WHERE "AmazonOrder".id = "AmazonOrderTransaction"."orderId"
-        AND "AmazonOrder"."userId" = auth.uid()
+        AND "AmazonOrder"."userId" = auth.uid()::text
+    )
+    AND EXISTS (
+      SELECT 1 FROM "Transaction"
+      JOIN "BudgetPeriod" ON "BudgetPeriod".id = "Transaction"."periodId"
+      WHERE "Transaction".id = "AmazonOrderTransaction"."transactionId"
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "AmazonOrderTransaction insert" ON "AmazonOrderTransaction"
@@ -428,13 +458,13 @@ CREATE POLICY "AmazonOrderTransaction insert" ON "AmazonOrderTransaction"
     EXISTS (
       SELECT 1 FROM "AmazonOrder"
       WHERE "AmazonOrder".id = "AmazonOrderTransaction"."orderId"
-        AND "AmazonOrder"."userId" = auth.uid()
+        AND "AmazonOrder"."userId" = auth.uid()::text
     )
     AND EXISTS (
       SELECT 1 FROM "Transaction"
       JOIN "BudgetPeriod" ON "BudgetPeriod".id = "Transaction"."periodId"
       WHERE "Transaction".id = "AmazonOrderTransaction"."transactionId"
-        AND "BudgetPeriod"."userId" = auth.uid()
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "AmazonOrderTransaction update" ON "AmazonOrderTransaction"
@@ -442,13 +472,25 @@ CREATE POLICY "AmazonOrderTransaction update" ON "AmazonOrderTransaction"
     EXISTS (
       SELECT 1 FROM "AmazonOrder"
       WHERE "AmazonOrder".id = "AmazonOrderTransaction"."orderId"
-        AND "AmazonOrder"."userId" = auth.uid()
+        AND "AmazonOrder"."userId" = auth.uid()::text
+    )
+    AND EXISTS (
+      SELECT 1 FROM "Transaction"
+      JOIN "BudgetPeriod" ON "BudgetPeriod".id = "Transaction"."periodId"
+      WHERE "Transaction".id = "AmazonOrderTransaction"."transactionId"
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   ) WITH CHECK (
     EXISTS (
       SELECT 1 FROM "AmazonOrder"
       WHERE "AmazonOrder".id = "AmazonOrderTransaction"."orderId"
-        AND "AmazonOrder"."userId" = auth.uid()
+        AND "AmazonOrder"."userId" = auth.uid()::text
+    )
+    AND EXISTS (
+      SELECT 1 FROM "Transaction"
+      JOIN "BudgetPeriod" ON "BudgetPeriod".id = "Transaction"."periodId"
+      WHERE "Transaction".id = "AmazonOrderTransaction"."transactionId"
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "AmazonOrderTransaction delete" ON "AmazonOrderTransaction"
@@ -456,7 +498,13 @@ CREATE POLICY "AmazonOrderTransaction delete" ON "AmazonOrderTransaction"
     EXISTS (
       SELECT 1 FROM "AmazonOrder"
       WHERE "AmazonOrder".id = "AmazonOrderTransaction"."orderId"
-        AND "AmazonOrder"."userId" = auth.uid()
+        AND "AmazonOrder"."userId" = auth.uid()::text
+    )
+    AND EXISTS (
+      SELECT 1 FROM "Transaction"
+      JOIN "BudgetPeriod" ON "BudgetPeriod".id = "Transaction"."periodId"
+      WHERE "Transaction".id = "AmazonOrderTransaction"."transactionId"
+        AND "BudgetPeriod"."userId" = auth.uid()::text
     )
   );
 
@@ -465,7 +513,7 @@ CREATE POLICY "AmazonOrderItem select" ON "AmazonOrderItem"
     EXISTS (
       SELECT 1 FROM "AmazonOrder"
       WHERE "AmazonOrder".id = "AmazonOrderItem"."orderId"
-        AND "AmazonOrder"."userId" = auth.uid()
+        AND "AmazonOrder"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "AmazonOrderItem insert" ON "AmazonOrderItem"
@@ -473,7 +521,7 @@ CREATE POLICY "AmazonOrderItem insert" ON "AmazonOrderItem"
     EXISTS (
       SELECT 1 FROM "AmazonOrder"
       WHERE "AmazonOrder".id = "AmazonOrderItem"."orderId"
-        AND "AmazonOrder"."userId" = auth.uid()
+        AND "AmazonOrder"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "AmazonOrderItem update" ON "AmazonOrderItem"
@@ -481,13 +529,13 @@ CREATE POLICY "AmazonOrderItem update" ON "AmazonOrderItem"
     EXISTS (
       SELECT 1 FROM "AmazonOrder"
       WHERE "AmazonOrder".id = "AmazonOrderItem"."orderId"
-        AND "AmazonOrder"."userId" = auth.uid()
+        AND "AmazonOrder"."userId" = auth.uid()::text
     )
   ) WITH CHECK (
     EXISTS (
       SELECT 1 FROM "AmazonOrder"
       WHERE "AmazonOrder".id = "AmazonOrderItem"."orderId"
-        AND "AmazonOrder"."userId" = auth.uid()
+        AND "AmazonOrder"."userId" = auth.uid()::text
     )
   );
 CREATE POLICY "AmazonOrderItem delete" ON "AmazonOrderItem"
@@ -495,6 +543,6 @@ CREATE POLICY "AmazonOrderItem delete" ON "AmazonOrderItem"
     EXISTS (
       SELECT 1 FROM "AmazonOrder"
       WHERE "AmazonOrder".id = "AmazonOrderItem"."orderId"
-        AND "AmazonOrder"."userId" = auth.uid()
+        AND "AmazonOrder"."userId" = auth.uid()::text
     )
   );

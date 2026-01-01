@@ -94,6 +94,8 @@ model RecurringDefinition {
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
   transactions      Transaction[]
+
+  @@index([userId])
 }
 
 model Transaction {
@@ -139,6 +141,8 @@ model Account {
   updatedAt       DateTime       @updatedAt
   importBatches   ImportBatch[]
   rawImportRows   RawImportRow[]
+
+  @@index([userId])
 }
 
 model TransactionLink {
