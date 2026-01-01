@@ -5,11 +5,14 @@
 ```bash
 npm install
 npx prisma generate
-npx prisma db push
+npx prisma migrate deploy
 npm run dev
 ```
 
 Visit: http://localhost:3000
+
+Make sure `.env.local` (or `.env`) contains your Supabase and database env vars.
+Invite your email in Supabase Auth, then sign in at `/login`.
 
 ## First-Time Setup
 
@@ -86,7 +89,7 @@ Difference: $222 over Goal Budget (oops)
 
 **Database errors?**
 ```bash
-npx prisma db push
+npx prisma migrate deploy
 ```
 
 **Module not found?**
@@ -100,15 +103,8 @@ npm install
 npx prisma generate
 ```
 
-## What's Missing (Deferred to v2)
+## Roadmap
 
-- CSV import
-- Auto-detecting recurring items
-- Credit card handling
-- Multiple users
-- Mobile app
-- Excitement
-
----
+See `docs/PROJECT_PROGRESS.md` for current status and deferred work.
 
 Need help? The app probably won't provide it. (Check the README.)

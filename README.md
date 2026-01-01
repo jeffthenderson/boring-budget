@@ -2,7 +2,7 @@
 
 > Budget like nobody's watching. (They're not.)
 
-A single-user budgeting web app that's thrillingly tedious and professionally boring. Built with enthusiasm for monotony.
+An invite-only budgeting web app that's thrillingly tedious and professionally boring. Built with enthusiasm for monotony.
 
 ## Features
 
@@ -18,7 +18,8 @@ A single-user budgeting web app that's thrillingly tedious and professionally bo
 ## Tech Stack
 
 - **Frontend**: Next.js 15 (App Router), React 19, TypeScript
-- **Database**: Postgres (Neon) with Prisma ORM
+- **Database**: Postgres (Supabase) with Prisma ORM
+- **Auth**: Supabase Auth (invite-only, MFA optional)
 - **Styling**: Tailwind CSS with custom Boring Budget brand
 - **Runtime**: Node.js
 
@@ -54,7 +55,8 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 Authentication is handled by Supabase Auth with per-user sessions and optional MFA.
 
 Visit `/login` to sign in. Accounts are invite-only. Sessions are enforced in middleware.
-See `docs/STAGING_ROLLOUT.md` for staging rollout and RLS verification steps.
+See `docs/STAGING_ROLLOUT.md` for staging rollout and RLS verification steps and
+`docs/PRODUCTION_ROLLOUT.md` for production setup.
 
 ### Environment Variables
 
@@ -71,6 +73,7 @@ AMAZON_IMPORT_SECRET=your-long-secret
 ### Vercel
 
 Add the same env vars (`DATABASE_URL`, `DIRECT_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `AMAZON_IMPORT_SECRET`) in Vercel and deploy.
+Use the Vercel CLI for deployments and status checks (see `docs/PRODUCTION_ROLLOUT.md`).
 
 ### First Run
 
@@ -176,7 +179,7 @@ See the full brand guide in the project documentation.
 
 The app uses Postgres with the following models:
 
-- **User**: Single user configuration
+- **User**: Supabase-authenticated user profile (id matches auth user id)
 - **PreallocationSettings**: Charity %, retirement, savings amounts
 - **BudgetPeriod**: Monthly budget periods
 - **IncomeItem**: Anticipated income sources
