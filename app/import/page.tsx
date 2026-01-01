@@ -685,7 +685,7 @@ function ImportWizard() {
               <ul className="list-disc list-inside text-sm text-monday-3pm ml-4">
                 <li>Normalize amounts based on account type</li>
                 <li>Filter or split periods based on your import range</li>
-                <li>Skip duplicates</li>
+                <li>Skip duplicates already in your database</li>
                 <li>Detect and ignore transfers</li>
                 <li>Apply ignore rules</li>
                 <li>Match to existing recurring expenses</li>

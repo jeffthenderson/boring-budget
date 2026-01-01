@@ -287,18 +287,6 @@ export async function processCSVImport(
     }
   }
 
-  // Step 3.5: Check for duplicates within the CSV itself and mark later occurrences
-  const seenHashes = new Set<string>()
-  for (const row of processedRows) {
-    if (row.status !== 'duplicate') {
-      if (seenHashes.has(row.hashKey)) {
-        row.status = 'duplicate'
-      } else {
-        seenHashes.add(row.hashKey)
-      }
-    }
-  }
-
   // Step 4: Create raw import rows (skip any that already exist in raw rows)
   const rowsToCreate = processedRows.filter(
     row => row.status !== 'duplicate' && !existingRawRowHashSet.has(row.hashKey)
@@ -382,10 +370,16 @@ export async function processCSVImport(
     let isRecurringInstance = false
     let recurringDefinitionId: string | undefined
 
+    const matchAmount = getExpenseAmount({
+      amount: row.normalizedAmount,
+      source: 'import',
+      importBatch: { account: currentAccount },
+    })
+
     const importedRow = {
       id: row.hashKey,
       parsedDate: row.parsedDate,
-      normalizedAmount: row.normalizedAmount,
+      normalizedAmount: matchAmount,
       normalizedDescription: row.normalizedDescription,
       parsedDescription: row.parsedDescription,
     }

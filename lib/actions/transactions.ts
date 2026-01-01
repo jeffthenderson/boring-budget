@@ -13,6 +13,8 @@ const LINK_MAX_CANDIDATES = 15
 const INCOME_MATCH_WINDOW_DAYS = 30
 const INCOME_MATCH_PERCENT = 0.1
 const INCOME_MATCH_MIN_DELTA = 100
+const RECURRING_MATCH_WINDOW_DAYS = 5
+const RECURRING_MATCH_PERCENT = 0.1
 
 function getRemainingLinkAmount(
   transaction: {
@@ -76,6 +78,10 @@ export async function markTransactionPosted(id: string, actualAmount?: number) {
 
   if (!transaction) {
     throw new Error('Transaction not found')
+  }
+
+  if (transaction.status === 'projected' && transaction.source === 'recurring') {
+    throw new Error('Projected recurring transactions must be matched to a posted transaction.')
   }
 
   const updated = await prisma.transaction.update({
@@ -657,6 +663,232 @@ export async function mergeIncomeMatch(
   }
 }
 
+export async function getRecurringMatchCandidates(
+  projectedId: string
+): Promise<{
+  projectedAmount: number
+  tolerance: number
+  candidates: Array<{
+    id: string
+    date: string
+    description: string
+    subDescription?: string | null
+    amount: number
+    category: string
+    status: string
+    source: string
+    amountDiff: number
+    dateDiffDays: number
+    withinTolerance: boolean
+  }>
+}> {
+  const user = await getCurrentUser()
+  const projected = await prisma.transaction.findFirst({
+    where: { id: projectedId, period: { userId: user.id } },
+    include: {
+      period: { select: { userId: true } },
+      recurringDefinition: true,
+    },
+  })
+
+  if (!projected) {
+    throw new Error('Transaction not found')
+  }
+
+  if (projected.status !== 'projected' || projected.source !== 'recurring') {
+    throw new Error('Only projected recurring transactions can be matched.')
+  }
+
+  if (!projected.recurringDefinition) {
+    throw new Error('Recurring definition not found for this transaction.')
+  }
+
+  const projectedExpense = getExpenseAmount(projected)
+  if (projectedExpense === 0) {
+    return { projectedAmount: 0, tolerance: 0, candidates: [] }
+  }
+
+  const projectedAmount = roundCurrency(Math.abs(projectedExpense))
+  const tolerance = roundCurrency(projectedAmount * RECURRING_MATCH_PERCENT)
+  const targetDate = projected.date
+  const windowStart = new Date(targetDate.getTime() - RECURRING_MATCH_WINDOW_DAYS * 24 * 60 * 60 * 1000)
+  const windowEnd = new Date(targetDate.getTime() + RECURRING_MATCH_WINDOW_DAYS * 24 * 60 * 60 * 1000)
+  const normalizedMerchant = normalizeDescription(projected.recurringDefinition.merchantLabel)
+
+  const candidates = await prisma.transaction.findMany({
+    where: {
+      periodId: projected.periodId,
+      period: { userId: projected.period.userId },
+      id: { not: projectedId },
+      status: 'posted',
+      isIgnored: false,
+      recurringDefinitionId: null,
+      source: { not: 'recurring' },
+      date: { gte: windowStart, lte: windowEnd },
+    },
+    include: {
+      importBatch: { include: { account: true } },
+    },
+    orderBy: { date: 'desc' },
+    take: 200,
+  })
+
+  const scored = candidates
+    .map(candidate => {
+      const candidateExpense = getExpenseAmount(candidate)
+      if (candidateExpense === 0) return null
+      if (Math.sign(candidateExpense) !== Math.sign(projectedExpense)) return null
+
+      const candidateAmount = roundCurrency(Math.abs(candidateExpense))
+      const amountDiff = roundCurrency(Math.abs(candidateAmount - projectedAmount))
+      const dateDiffDays = Math.abs(candidate.date.getTime() - targetDate.getTime()) / (1000 * 60 * 60 * 24)
+      const withinTolerance = amountDiff <= tolerance
+      const normalizedCandidate = normalizeDescription(
+        buildCompositeDescription(candidate.description, candidate.subDescription)
+      )
+      const descriptionMatch = normalizedMerchant && normalizedCandidate
+        ? normalizedCandidate.includes(normalizedMerchant)
+        : false
+      const score = amountDiff * 10 + dateDiffDays + (descriptionMatch ? 0 : 25)
+
+      return {
+        id: candidate.id,
+        date: candidate.date.toISOString().split('T')[0],
+        description: candidate.description,
+        subDescription: candidate.subDescription,
+        amount: candidate.amount,
+        category: candidate.category,
+        status: candidate.status,
+        source: candidate.source,
+        amountDiff,
+        dateDiffDays,
+        withinTolerance,
+        score,
+      }
+    })
+    .filter(Boolean)
+    .sort((a, b) => {
+      if (a!.withinTolerance !== b!.withinTolerance) {
+        return a!.withinTolerance ? -1 : 1
+      }
+      if (a!.score !== b!.score) return a!.score - b!.score
+      return a!.dateDiffDays - b!.dateDiffDays
+    })
+    .slice(0, 40)
+    .map(item => {
+      const { score, ...rest } = item!
+      return rest
+    })
+
+  return {
+    projectedAmount,
+    tolerance: roundCurrency(tolerance),
+    candidates: scored,
+  }
+}
+
+export async function mergeRecurringMatch(
+  projectedId: string,
+  candidateId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const user = await getCurrentUser()
+    const transactions = await prisma.transaction.findMany({
+      where: { id: { in: [projectedId, candidateId] }, period: { userId: user.id } },
+      include: {
+        period: { select: { userId: true } },
+        importBatch: { include: { account: true } },
+        recurringDefinition: true,
+      },
+    })
+
+    if (transactions.length !== 2) {
+      return { success: false, error: 'Transactions not found' }
+    }
+
+    const projected = transactions.find(tx => tx.id === projectedId)!
+    const candidate = transactions.find(tx => tx.id === candidateId)!
+
+    if (projected.period.userId !== candidate.period.userId) {
+      return { success: false, error: 'Transactions belong to different users' }
+    }
+
+    if (projected.status !== 'projected' || projected.source !== 'recurring') {
+      return { success: false, error: 'Projected recurring transaction not found' }
+    }
+
+    if (!projected.recurringDefinition) {
+      return { success: false, error: 'Recurring definition missing for projected transaction' }
+    }
+
+    if (projected.periodId !== candidate.periodId) {
+      return { success: false, error: 'Transactions must be in the same period' }
+    }
+
+    if (candidate.status !== 'posted' || candidate.isIgnored) {
+      return { success: false, error: 'Candidate transaction must be a posted, non-ignored transaction' }
+    }
+
+    if (candidate.source === 'recurring') {
+      return { success: false, error: 'Candidate transaction is already recurring' }
+    }
+
+    if (candidate.recurringDefinitionId) {
+      return { success: false, error: 'Candidate transaction is already linked to a recurring definition' }
+    }
+
+    const projectedExpense = getExpenseAmount(projected)
+    const candidateExpense = getExpenseAmount(candidate)
+    if (projectedExpense === 0 || candidateExpense === 0 || Math.sign(projectedExpense) !== Math.sign(candidateExpense)) {
+      return { success: false, error: 'Transactions must have the same direction to match' }
+    }
+
+    const projectedAmount = roundCurrency(Math.abs(projectedExpense))
+    const actualAmount = roundCurrency(Math.abs(candidateExpense))
+    const varianceNote = projectedAmount !== actualAmount
+      ? `Projected ${projectedAmount.toFixed(2)}; actual ${actualAmount.toFixed(2)}.`
+      : ''
+    const combinedNote = [
+      projected.userDescription?.trim(),
+      candidate.userDescription?.trim(),
+      varianceNote,
+    ].filter(Boolean).join(' ')
+
+    const isImport = candidate.source === 'import'
+    const category = projected.recurringDefinition.category || projected.category
+
+    await prisma.transaction.update({
+      where: { id: projected.id },
+      data: {
+        periodId: candidate.periodId,
+        date: candidate.date,
+        description: candidate.description,
+        subDescription: candidate.subDescription || undefined,
+        amount: candidate.amount,
+        category,
+        status: 'posted',
+        source: candidate.source,
+        importBatchId: isImport ? candidate.importBatchId : null,
+        externalId: isImport ? (candidate.externalId ?? null) : null,
+        sourceImportHash: isImport ? (candidate.sourceImportHash ?? null) : null,
+        userDescription: combinedNote || undefined,
+        isRecurringInstance: true,
+        recurringDefinitionId: projected.recurringDefinitionId,
+      },
+    })
+
+    await prisma.transaction.delete({
+      where: { id: candidate.id },
+    })
+
+    revalidatePath('/')
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error merging recurring match:', error)
+    return { success: false, error: error.message }
+  }
+}
+
 export async function getTransactionLinkCandidates(
   transactionId: string,
   type: 'refund' | 'reimbursement'
@@ -985,8 +1217,7 @@ export async function createTransactionLink(
     })
 
     if (
-      type === 'refund'
-      && expense.category
+      expense.category
       && expense.category !== credit.category
       && expense.category !== 'Income'
       && expense.category !== 'Uncategorized'

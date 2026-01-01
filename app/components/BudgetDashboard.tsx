@@ -37,6 +37,8 @@ import {
   searchTransactionLinkCandidates,
   getIncomeMatchCandidates,
   mergeIncomeMatch,
+  getRecurringMatchCandidates,
+  mergeRecurringMatch,
 } from '@/lib/actions/transactions'
 import {
   createCategoryMappingRule,
@@ -96,6 +98,15 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
   const [incomeMatchError, setIncomeMatchError] = useState<string | null>(null)
   const [incomeMatchSearch, setIncomeMatchSearch] = useState('')
   const [incomeMatchLinking, setIncomeMatchLinking] = useState(false)
+  const [recurringMatchOpen, setRecurringMatchOpen] = useState(false)
+  const [recurringMatchTarget, setRecurringMatchTarget] = useState<any>(null)
+  const [recurringMatchCandidates, setRecurringMatchCandidates] = useState<any[]>([])
+  const [recurringMatchTolerance, setRecurringMatchTolerance] = useState(0)
+  const [recurringMatchLoading, setRecurringMatchLoading] = useState(false)
+  const [recurringMatchLoadingId, setRecurringMatchLoadingId] = useState<string | null>(null)
+  const [recurringMatchError, setRecurringMatchError] = useState<string | null>(null)
+  const [recurringMatchSearch, setRecurringMatchSearch] = useState('')
+  const [recurringMatchLinking, setRecurringMatchLinking] = useState(false)
 
   const [editingBudget, setEditingBudget] = useState<Record<string, string>>({})
 
@@ -470,6 +481,64 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
       setIncomeMatchError(error?.message || 'Failed to post income.')
     } finally {
       setIncomeMatchLinking(false)
+    }
+  }
+
+  async function handlePostRecurring(item: any) {
+    setRecurringMatchLoading(true)
+    setRecurringMatchLoadingId(item.id)
+    setRecurringMatchError(null)
+    setRecurringMatchSearch('')
+    try {
+      const result = await getRecurringMatchCandidates(item.id)
+      const withinTolerance = result.candidates.filter((candidate: any) => candidate.withinTolerance)
+
+      if (withinTolerance.length === 1) {
+        const match = await mergeRecurringMatch(item.id, withinTolerance[0].id)
+        if (!match.success) {
+          throw new Error(match.error || 'Failed to link recurring transaction.')
+        }
+        router.refresh()
+        return
+      }
+
+      setRecurringMatchTarget(item)
+      setRecurringMatchCandidates(result.candidates)
+      setRecurringMatchTolerance(result.tolerance)
+      setRecurringMatchOpen(true)
+    } catch (error: any) {
+      const message = error?.message || 'Failed to find recurring matches.'
+      setRecurringMatchError(message)
+      alert(message)
+    } finally {
+      setRecurringMatchLoading(false)
+      setRecurringMatchLoadingId(null)
+    }
+  }
+
+  function closeRecurringMatch() {
+    setRecurringMatchOpen(false)
+    setRecurringMatchTarget(null)
+    setRecurringMatchCandidates([])
+    setRecurringMatchTolerance(0)
+    setRecurringMatchError(null)
+    setRecurringMatchSearch('')
+  }
+
+  async function handleMatchRecurringCandidate(candidateId: string) {
+    if (!recurringMatchTarget) return
+    setRecurringMatchLinking(true)
+    try {
+      const result = await mergeRecurringMatch(recurringMatchTarget.id, candidateId)
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to link recurring transaction.')
+      }
+      closeRecurringMatch()
+      router.refresh()
+    } catch (error: any) {
+      setRecurringMatchError(error?.message || 'Failed to link recurring transaction.')
+    } finally {
+      setRecurringMatchLinking(false)
     }
   }
 
@@ -1125,6 +1194,18 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
     return haystack.includes(incomeMatchQuery)
   })
 
+  const recurringMatchQuery = recurringMatchSearch.trim().toLowerCase()
+  const filteredRecurringMatches = recurringMatchCandidates.filter(candidate => {
+    if (!recurringMatchQuery) return true
+    const amountText = Math.abs(candidate.amount || 0).toFixed(2)
+    const haystack = [
+      candidate.description || '',
+      candidate.subDescription || '',
+      amountText,
+    ].join(' ').toLowerCase()
+    return haystack.includes(recurringMatchQuery)
+  })
+
   return (
     <div className="space-y-6">
       {llmProgress.active && (
@@ -1212,6 +1293,68 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                 {incomeMatchLinking ? 'POSTING...' : 'POST WITHOUT MATCH'}
               </Button>
               <Button variant="secondary" onClick={closeIncomeMatch} disabled={incomeMatchLinking}>
+                CANCEL
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {recurringMatchOpen && recurringMatchTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-2xl rounded-lg border-2 border-dark bg-white p-5 shadow-lg">
+            <div className="text-sm uppercase tracking-wider text-dark font-medium">
+              Match Recurring to Transaction
+            </div>
+            <div className="mt-2 text-sm text-monday-3pm">
+              {recurringMatchTarget.description} · {formatDateDisplay(recurringMatchTarget.date)} · {formatCurrency(Math.abs(recurringMatchTarget.amount))}
+            </div>
+            <div className="mt-2 text-xs text-monday-3pm">
+              Tolerance: ±{formatCurrency(recurringMatchTolerance)}
+            </div>
+
+            <div className="mt-4">
+              <input
+                type="text"
+                value={recurringMatchSearch}
+                onChange={(e) => setRecurringMatchSearch(e.target.value)}
+                placeholder="Search description or amount"
+                className="w-full border-2 border-cubicle-taupe bg-white px-3 py-2 text-sm"
+              />
+            </div>
+
+            {recurringMatchError && (
+              <div className="mt-3 text-sm text-red-700">{recurringMatchError}</div>
+            )}
+
+            <div className="mt-4 space-y-2 max-h-72 overflow-y-auto border-t border-cubicle-taupe pt-3">
+              {filteredRecurringMatches.length === 0 ? (
+                <div className="text-sm text-monday-3pm">No matches found.</div>
+              ) : (
+                filteredRecurringMatches.map(candidate => (
+                  <div key={candidate.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 border-b border-cubicle-taupe pb-2">
+                    <div>
+                      <div className="text-sm">
+                        {candidate.date} · {formatCurrency(candidate.amount)} · {candidate.description}
+                        {candidate.subDescription ? ` · ${candidate.subDescription}` : ''}
+                      </div>
+                      <div className="text-xs text-monday-3pm">
+                        Δ {formatCurrency(candidate.amountDiff)} · {candidate.withinTolerance ? 'within tolerance' : 'outside tolerance'}
+                      </div>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      onClick={() => handleMatchRecurringCandidate(candidate.id)}
+                      disabled={recurringMatchLinking}
+                    >
+                      {recurringMatchLinking ? 'LINKING...' : 'LINK'}
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2 justify-end">
+              <Button variant="secondary" onClick={closeRecurringMatch} disabled={recurringMatchLinking}>
                 CANCEL
               </Button>
             </div>
@@ -1984,11 +2127,19 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                               {t.status === 'projected' && (
                                 <Button
                                   onClick={() => (
-                                    t.category === 'Income' ? handlePostIncome(t) : markTransactionPosted(t.id)
+                                    t.category === 'Income'
+                                      ? handlePostIncome(t)
+                                      : t.source === 'recurring'
+                                        ? handlePostRecurring(t)
+                                        : markTransactionPosted(t.id)
                                   )}
-                                  disabled={t.category === 'Income' && incomeMatchLoading && incomeMatchLoadingId === t.id}
+                                  disabled={
+                                    (t.category === 'Income' && incomeMatchLoading && incomeMatchLoadingId === t.id)
+                                    || (t.source === 'recurring' && recurringMatchLoading && recurringMatchLoadingId === t.id)
+                                  }
                                 >
-                                  {t.category === 'Income' && incomeMatchLoading && incomeMatchLoadingId === t.id
+                                  {(t.category === 'Income' && incomeMatchLoading && incomeMatchLoadingId === t.id)
+                                    || (t.source === 'recurring' && recurringMatchLoading && recurringMatchLoadingId === t.id)
                                     ? 'MATCHING...'
                                     : 'POST'}
                                 </Button>

@@ -198,7 +198,7 @@ model RawImportRow {
   ignoreReason            String?
   createdAt               DateTime      @default(now())
 
-  @@unique([accountId, hashKey])
+  @@index([accountId, hashKey])
 }
 
 model TransferGroup {
