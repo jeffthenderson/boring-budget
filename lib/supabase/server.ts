@@ -1,10 +1,19 @@
 import { cookies } from 'next/headers'
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
 type SupabaseServerClientOptions = {
   allowMissing?: boolean
 }
 
+type SupabaseServerClient = ReturnType<typeof createServerClient>
+
+export async function createSupabaseServerClient(): Promise<SupabaseServerClient>
+export async function createSupabaseServerClient(
+  options: SupabaseServerClientOptions & { allowMissing?: false }
+): Promise<SupabaseServerClient>
+export async function createSupabaseServerClient(
+  options: SupabaseServerClientOptions & { allowMissing: true }
+): Promise<SupabaseServerClient | null>
 export async function createSupabaseServerClient(
   options: SupabaseServerClientOptions = {}
 ) {
@@ -22,13 +31,13 @@ export async function createSupabaseServerClient(
 
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
-      get(name) {
+      get(name: string) {
         return cookieStore.get(name)?.value
       },
-      set(name, value, options) {
+      set(name: string, value: string, options: CookieOptions) {
         cookieStore.set({ name, value, ...options })
       },
-      remove(name, options) {
+      remove(name: string, options: CookieOptions) {
         cookieStore.set({ name, value: '', ...options })
       },
     },
