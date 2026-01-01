@@ -6,6 +6,7 @@ import { isRecurringCategory } from '@/lib/constants/categories'
 import { parseCurrency, roundCurrency } from '@/lib/utils/currency'
 import { buildCompositeDescription, normalizeDescription } from '@/lib/utils/import/normalizer'
 import { getExpenseAmount } from '@/lib/utils/transaction-amounts'
+import { getCurrentUser } from './user'
 
 const LINK_MATCH_WINDOW_DAYS = 365
 const LINK_MAX_CANDIDATES = 15
@@ -40,9 +41,19 @@ export async function addManualTransaction(periodId: string, data: {
   amount: number
   category: string
 }) {
+  const user = await getCurrentUser()
+  const period = await prisma.budgetPeriod.findFirst({
+    where: { id: periodId, userId: user.id },
+    select: { id: true },
+  })
+
+  if (!period) {
+    throw new Error('Period not found')
+  }
+
   const transaction = await prisma.transaction.create({
     data: {
-      periodId,
+      periodId: period.id,
       date: data.date,
       description: data.description,
       amount: data.amount,
@@ -58,8 +69,9 @@ export async function addManualTransaction(periodId: string, data: {
 }
 
 export async function markTransactionPosted(id: string, actualAmount?: number) {
-  const transaction = await prisma.transaction.findUnique({
-    where: { id },
+  const user = await getCurrentUser()
+  const transaction = await prisma.transaction.findFirst({
+    where: { id, period: { userId: user.id } },
   })
 
   if (!transaction) {
@@ -79,8 +91,9 @@ export async function markTransactionPosted(id: string, actualAmount?: number) {
 }
 
 export async function deleteTransaction(id: string) {
-  await prisma.transaction.delete({
-    where: { id },
+  const user = await getCurrentUser()
+  await prisma.transaction.deleteMany({
+    where: { id, period: { userId: user.id } },
   })
 
   revalidatePath('/')
@@ -91,9 +104,11 @@ export async function getTransactionsByPeriod(periodId: string, filters?: {
   category?: string
   status?: string
 }) {
+  const user = await getCurrentUser()
   return prisma.transaction.findMany({
     where: {
       periodId,
+      period: { userId: user.id },
       ...(filters?.category && { category: filters.category }),
       ...(filters?.status && { status: filters.status }),
     },
@@ -114,8 +129,9 @@ export async function updateTransactionCategory(
   mappingSuggestion?: { description: string; subDescription?: string | null; category: string }
 }> {
   try {
-    const transaction = await prisma.transaction.findUnique({
-      where: { id: transactionId },
+    const user = await getCurrentUser()
+    const transaction = await prisma.transaction.findFirst({
+      where: { id: transactionId, period: { userId: user.id } },
       include: {
         period: true,
         importBatch: { include: { account: true } },
@@ -243,8 +259,18 @@ export async function updateTransactionNote(
   note: string | null
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const user = await getCurrentUser()
+    const transaction = await prisma.transaction.findFirst({
+      where: { id: transactionId, period: { userId: user.id } },
+      select: { id: true },
+    })
+
+    if (!transaction) {
+      return { success: false, error: 'Transaction not found' }
+    }
+
     await prisma.transaction.update({
-      where: { id: transactionId },
+      where: { id: transaction.id },
       data: { userDescription: note },
     })
 
@@ -260,16 +286,17 @@ export async function linkTransactionToRecurring(
   recurringDefinitionId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const transaction = await prisma.transaction.findUnique({
-      where: { id: transactionId },
+    const user = await getCurrentUser()
+    const transaction = await prisma.transaction.findFirst({
+      where: { id: transactionId, period: { userId: user.id } },
     })
 
     if (!transaction) {
       return { success: false, error: 'Transaction not found' }
     }
 
-    const definition = await prisma.recurringDefinition.findUnique({
-      where: { id: recurringDefinitionId },
+    const definition = await prisma.recurringDefinition.findFirst({
+      where: { id: recurringDefinitionId, userId: user.id },
     })
 
     if (!definition) {
@@ -323,8 +350,9 @@ export async function createRecurringFromTransaction(
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const transaction = await prisma.transaction.findUnique({
-      where: { id: transactionId },
+    const user = await getCurrentUser()
+    const transaction = await prisma.transaction.findFirst({
+      where: { id: transactionId, period: { userId: user.id } },
       include: { period: { include: { user: true } } },
     })
 
@@ -336,25 +364,25 @@ export async function createRecurringFromTransaction(
     const merchantLabel = data.merchantLabel.trim()
     const displayLabel = (data.displayLabel ?? '').trim() || merchantLabel
 
-  const definition = await prisma.recurringDefinition.create({
-    data: {
-      userId: transaction.period.userId,
-      category: data.category || transaction.category,
+    const definition = await prisma.recurringDefinition.create({
+      data: {
+        userId: transaction.period.userId,
+        category: data.category || transaction.category,
         merchantLabel,
         displayLabel,
         nominalAmount: data.nominalAmount,
         frequency: data.frequency,
         schedulingRule: data.schedulingRule,
         active: true,
-    },
-  })
+      },
+    })
 
-  // Link transaction to the new definition
-  await linkTransactionToRecurring(transactionId, definition.id)
+    // Link transaction to the new definition
+    await linkTransactionToRecurring(transactionId, definition.id)
 
-  revalidatePath('/')
-  revalidatePath('/recurring')
-  return { success: true }
+    revalidatePath('/')
+    revalidatePath('/recurring')
+    return { success: true }
   } catch (error: any) {
     console.error('Error creating recurring:', error)
     return { success: false, error: error.message }
@@ -362,12 +390,12 @@ export async function createRecurringFromTransaction(
 }
 
 export async function getActiveRecurringDefinitions(
-  userId: string,
   category?: string
 ): Promise<Array<{ id: string; merchantLabel: string; displayLabel: string | null; nominalAmount: number; frequency: string; category: string }>> {
+  const user = await getCurrentUser()
   const definitions = await prisma.recurringDefinition.findMany({
     where: {
-      userId,
+      userId: user.id,
       ...(category && { category }),
       active: true,
     },
@@ -390,8 +418,18 @@ export async function setTransactionIgnored(
   ignored: boolean
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const user = await getCurrentUser()
+    const transaction = await prisma.transaction.findFirst({
+      where: { id: transactionId, period: { userId: user.id } },
+      select: { id: true },
+    })
+
+    if (!transaction) {
+      return { success: false, error: 'Transaction not found' }
+    }
+
     await prisma.transaction.update({
-      where: { id: transactionId },
+      where: { id: transaction.id },
       data: { isIgnored: ignored },
     })
 
@@ -411,10 +449,20 @@ export async function addIncomeTransaction(
     amount: number
   }
 ) {
+  const user = await getCurrentUser()
+  const period = await prisma.budgetPeriod.findFirst({
+    where: { id: periodId, userId: user.id },
+    select: { id: true },
+  })
+
+  if (!period) {
+    throw new Error('Period not found')
+  }
+
   const amount = -Math.abs(data.amount)
   const transaction = await prisma.transaction.create({
     data: {
-      periodId,
+      periodId: period.id,
       date: data.date,
       description: data.source,
       amount,
@@ -448,8 +496,9 @@ export async function getIncomeMatchCandidates(
     withinTolerance: boolean
   }>
 }> {
-  const transaction = await prisma.transaction.findUnique({
-    where: { id: transactionId },
+  const user = await getCurrentUser()
+  const transaction = await prisma.transaction.findFirst({
+    where: { id: transactionId, period: { userId: user.id } },
     include: {
       period: { select: { userId: true } },
     },
@@ -536,8 +585,9 @@ export async function mergeIncomeMatch(
   importId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const user = await getCurrentUser()
     const transactions = await prisma.transaction.findMany({
-      where: { id: { in: [projectedId, importId] } },
+      where: { id: { in: [projectedId, importId] }, period: { userId: user.id } },
       include: {
         period: { select: { userId: true } },
         importBatch: { include: { account: true } },
@@ -625,8 +675,9 @@ export async function getTransactionLinkCandidates(
   linkedAmount: number
   remainingAmount: number
 }>> {
-  const transaction = await prisma.transaction.findUnique({
-    where: { id: transactionId },
+  const user = await getCurrentUser()
+  const transaction = await prisma.transaction.findFirst({
+    where: { id: transactionId, period: { userId: user.id } },
     include: {
       period: { select: { userId: true } },
       importBatch: { include: { account: true } },
@@ -744,8 +795,9 @@ export async function searchTransactionLinkCandidates(
   const trimmed = query.trim()
   if (!trimmed) return []
 
-  const transaction = await prisma.transaction.findUnique({
-    where: { id: transactionId },
+  const user = await getCurrentUser()
+  const transaction = await prisma.transaction.findFirst({
+    where: { id: transactionId, period: { userId: user.id } },
     include: {
       period: { select: { userId: true } },
       importBatch: { include: { account: true } },
@@ -870,8 +922,12 @@ export async function createTransactionLink(
   amount?: number
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const user = await getCurrentUser()
     const transactions = await prisma.transaction.findMany({
-      where: { id: { in: [primaryTransactionId, candidateTransactionId] } },
+      where: {
+        id: { in: [primaryTransactionId, candidateTransactionId] },
+        period: { userId: user.id },
+      },
       include: {
         period: { select: { userId: true } },
         importBatch: { include: { account: true } },
@@ -956,8 +1012,21 @@ export async function removeTransactionLink(
   linkId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const user = await getCurrentUser()
+    const link = await prisma.transactionLink.findFirst({
+      where: {
+        id: linkId,
+        fromTransaction: { period: { userId: user.id } },
+      },
+      select: { id: true },
+    })
+
+    if (!link) {
+      return { success: false, error: 'Link not found' }
+    }
+
     await prisma.transactionLink.delete({
-      where: { id: linkId },
+      where: { id: link.id },
     })
     revalidatePath('/')
     return { success: true }

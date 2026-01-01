@@ -574,7 +574,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
     // User can link to any recurring schedule, which will then set the category
     const definitions = recurringDefinitions.length > 0
       ? recurringDefinitions
-      : await getActiveRecurringDefinitions(period.userId, undefined)
+      : await getActiveRecurringDefinitions(undefined)
 
     // Store the intended category to apply after modal completion (if creating new)
     setRecurringTransaction({ ...transaction, intendedCategory: category })

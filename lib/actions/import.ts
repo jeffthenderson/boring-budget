@@ -16,6 +16,7 @@ import { getBestRecurringMatch, matchAgainstDefinitions } from '@/lib/utils/impo
 import { ColumnMapping } from '@/lib/utils/import/csv-parser'
 import { getCurrentOrCreatePeriod } from './period'
 import { getExpenseAmount } from '@/lib/utils/transaction-amounts'
+import { getCurrentUser } from './user'
 
 export interface ProcessedRow {
   lineNumber: number
@@ -74,9 +75,10 @@ export async function processCSVImport(
   mapping: ColumnMapping,
   accountType: 'credit_card' | 'bank'
 ): Promise<ImportSummary> {
+  const user = await getCurrentUser()
   // Get period info
-  const period = await prisma.budgetPeriod.findUnique({
-    where: { id: periodId },
+  const period = await prisma.budgetPeriod.findFirst({
+    where: { id: periodId, userId: user.id },
     include: {
       transactions: {
         where: {
@@ -95,8 +97,8 @@ export async function processCSVImport(
   }
 
   // Get current account
-  const currentAccount = await prisma.account.findUnique({
-    where: { id: accountId },
+  const currentAccount = await prisma.account.findFirst({
+    where: { id: accountId, userId: user.id },
   })
 
   if (!currentAccount) {
@@ -105,6 +107,7 @@ export async function processCSVImport(
 
   // Get all accounts for transfer detection
   const allAccounts = await prisma.account.findMany({
+    where: { userId: user.id },
     select: { id: true, displayAlias: true, last4: true },
   })
 
@@ -664,8 +667,9 @@ function mergeSummaries(summaries: ImportSummary[]): ImportSummary {
  * Get import batch with details
  */
 export async function getImportBatch(batchId: string) {
-  return prisma.importBatch.findUnique({
-    where: { id: batchId },
+  const user = await getCurrentUser()
+  return prisma.importBatch.findFirst({
+    where: { id: batchId, account: { userId: user.id } },
     include: {
       account: true,
       period: true,
@@ -683,9 +687,19 @@ export async function getImportBatch(batchId: string) {
  * Undo an import batch
  */
 export async function undoImportBatch(batchId: string) {
+  const user = await getCurrentUser()
+  const batch = await prisma.importBatch.findFirst({
+    where: { id: batchId, account: { userId: user.id } },
+    select: { id: true },
+  })
+
+  if (!batch) {
+    throw new Error('Import batch not found')
+  }
+
   // Delete transactions created by this batch
   await prisma.transaction.deleteMany({
-    where: { importBatchId: batchId },
+    where: { importBatchId: batch.id },
   })
 
   // Delete transfer groups created by this batch
@@ -693,12 +707,12 @@ export async function undoImportBatch(batchId: string) {
 
   // Delete raw import rows
   await prisma.rawImportRow.deleteMany({
-    where: { batchId },
+    where: { batchId: batch.id },
   })
 
   // Delete the batch itself
   await prisma.importBatch.delete({
-    where: { id: batchId },
+    where: { id: batch.id },
   })
 
   revalidatePath('/')
@@ -711,8 +725,9 @@ export async function undoImportBatch(batchId: string) {
  * Get all import batches for the current period
  */
 export async function getImportBatches(periodId: string) {
+  const user = await getCurrentUser()
   return prisma.importBatch.findMany({
-    where: { periodId },
+    where: { periodId, period: { userId: user.id } },
     include: {
       account: true,
     },

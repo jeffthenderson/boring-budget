@@ -3,7 +3,7 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
-import { getOrCreateUser } from './user'
+import { getCurrentUser } from './user'
 import { roundCurrency } from '@/lib/utils/currency'
 import { TRANSACTION_CATEGORIES, isRecurringCategory, isIncomeCategory } from '@/lib/constants/categories'
 import { getExpenseAmount } from '@/lib/utils/transaction-amounts'
@@ -176,8 +176,11 @@ function isAllowedCategory(category: string | null): category is AllowedCategory
   return ALLOWED_CATEGORIES.includes(category as AllowedCategory)
 }
 
-export async function importAmazonOrders(orders: AmazonOrderImport[], sourceUrl?: string) {
-  const user = await getOrCreateUser()
+export async function importAmazonOrders(
+  userId: string,
+  orders: AmazonOrderImport[],
+  sourceUrl?: string
+) {
   const seen = new Map<string, AmazonOrderImport>()
   let invalid = 0
 
@@ -211,7 +214,7 @@ export async function importAmazonOrders(orders: AmazonOrderImport[], sourceUrl?
 
   const existing = await prisma.amazonOrder.findMany({
     where: {
-      userId: user.id,
+      userId,
       amazonOrderId: { in: dedupedOrders.map(order => order.orderId) },
     },
     select: { amazonOrderId: true },
@@ -226,7 +229,7 @@ export async function importAmazonOrders(orders: AmazonOrderImport[], sourceUrl?
     for (const chunk of createChunks) {
       const result = await prisma.amazonOrder.createMany({
         data: chunk.map(order => ({
-          userId: user.id,
+          userId,
           amazonOrderId: order.orderId,
           orderDate: new Date(order.orderDate),
           orderTotal: order.orderTotal,
@@ -242,7 +245,7 @@ export async function importAmazonOrders(orders: AmazonOrderImport[], sourceUrl?
 
   const storedOrders = await prisma.amazonOrder.findMany({
     where: {
-      userId: user.id,
+      userId,
       amazonOrderId: { in: newOrders.map(order => order.orderId) },
     },
     select: { id: true, amazonOrderId: true },
@@ -267,10 +270,10 @@ export async function importAmazonOrders(orders: AmazonOrderImport[], sourceUrl?
     }
   }
 
-  const matchResult = await matchAmazonOrders({
-    userId: user.id,
-    orderIds: storedOrders.map(order => order.id),
-  })
+  const matchResult = await matchAmazonOrdersForUser(
+    userId,
+    storedOrders.map(order => order.id)
+  )
 
   revalidatePath('/amazon')
   return {
@@ -285,7 +288,7 @@ export async function importAmazonOrders(orders: AmazonOrderImport[], sourceUrl?
 }
 
 export async function getAmazonOrders() {
-  const user = await getOrCreateUser()
+  const user = await getCurrentUser()
   return prisma.amazonOrder.findMany({
     where: { userId: user.id },
     include: {
@@ -300,9 +303,13 @@ export async function getAmazonOrders() {
   })
 }
 
-export async function matchAmazonOrders(options?: { userId?: string; orderIds?: string[] }) {
-  const userId = options?.userId ?? (await getOrCreateUser()).id
-  const orderFilter = options?.orderIds?.length ? { id: { in: options.orderIds } } : {}
+export async function matchAmazonOrders(options?: { orderIds?: string[] }) {
+  const user = await getCurrentUser()
+  return matchAmazonOrdersForUser(user.id, options?.orderIds)
+}
+
+async function matchAmazonOrdersForUser(userId: string, orderIds?: string[]) {
+  const orderFilter = orderIds?.length ? { id: { in: orderIds } } : {}
 
   const orders = await prisma.amazonOrder.findMany({
     where: { userId, isIgnored: false, ...orderFilter },
@@ -472,7 +479,7 @@ export async function matchAmazonOrders(options?: { userId?: string; orderIds?: 
 }
 
 export async function getAmazonMatchCandidates(orderId: string) {
-  const user = await getOrCreateUser()
+  const user = await getCurrentUser()
 
   const order = await prisma.amazonOrder.findFirst({
     where: { id: orderId, userId: user.id },
@@ -538,7 +545,7 @@ export async function getAmazonMatchCandidates(orderId: string) {
 }
 
 export async function linkAmazonOrder(orderId: string, transactionIds: string[] | null) {
-  const user = await getOrCreateUser()
+  const user = await getCurrentUser()
 
   const order = await prisma.amazonOrder.findFirst({
     where: { id: orderId, userId: user.id },
@@ -608,7 +615,7 @@ export async function linkAmazonOrder(orderId: string, transactionIds: string[] 
 }
 
 export async function setAmazonOrderIgnored(orderId: string, isIgnored: boolean) {
-  const user = await getOrCreateUser()
+  const user = await getCurrentUser()
 
   const order = await prisma.amazonOrder.findFirst({
     where: { id: orderId, userId: user.id },
@@ -630,7 +637,7 @@ export async function setAmazonOrderIgnored(orderId: string, isIgnored: boolean)
 }
 
 export async function categorizeAmazonOrdersWithLLM() {
-  const user = await getOrCreateUser()
+  const user = await getCurrentUser()
   const apiKey = process.env.OPENAI_API_KEY
   const model = process.env.OPENAI_MODEL || 'gpt-5-mini'
 

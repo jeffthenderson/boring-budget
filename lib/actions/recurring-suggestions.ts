@@ -1,7 +1,7 @@
 'use server'
 
 import { prisma } from '@/lib/db'
-import { getOrCreateUser } from './user'
+import { getCurrentUser } from './user'
 import { normalizeDescription, buildCompositeDescription } from '@/lib/utils/import/normalizer'
 import { roundCurrency } from '@/lib/utils/currency'
 import { getExpenseAmount } from '@/lib/utils/transaction-amounts'
@@ -33,7 +33,7 @@ export interface RecurringSuggestion {
 type RecurringSequence = NonNullable<ReturnType<typeof buildSequenceFromOccurrences>>
 
 export async function getRecurringSuggestions(): Promise<RecurringSuggestion[]> {
-  const user = await getOrCreateUser()
+  const user = await getCurrentUser()
 
   const [transactions, definitions, dismissals] = await Promise.all([
     prisma.transaction.findMany({
@@ -140,7 +140,7 @@ export async function getRecurringSuggestions(): Promise<RecurringSuggestion[]> 
 }
 
 export async function dismissRecurringSuggestion(key: string) {
-  const user = await getOrCreateUser()
+  const user = await getCurrentUser()
   const suggestionKey = key.trim()
 
   if (!suggestionKey) {

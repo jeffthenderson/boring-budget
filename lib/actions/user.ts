@@ -2,26 +2,24 @@
 
 import { prisma } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
+import { requireUserId } from '@/lib/auth'
 
-export async function getOrCreateUser() {
-  const users = await prisma.user.findMany()
+export async function getCurrentUser() {
+  const userId = await requireUserId()
 
-  if (users.length > 0) {
-    return users[0]
-  }
-
-  const user = await prisma.user.create({
-    data: {
+  return prisma.user.upsert({
+    where: { id: userId },
+    create: {
+      id: userId,
       timezone: 'America/New_York',
       currency: 'USD',
     },
+    update: {},
   })
-
-  return user
 }
 
 export async function getPreallocationSettings() {
-  const user = await getOrCreateUser()
+  const user = await getCurrentUser()
 
   let settings = await prisma.preallocationSettings.findUnique({
     where: { userId: user.id },
@@ -46,7 +44,7 @@ export async function updatePreallocationSettings(data: {
   retirementAmount: number
   otherSavingsAmount: number
 }) {
-  const user = await getOrCreateUser()
+  const user = await getCurrentUser()
 
   const settings = await prisma.preallocationSettings.upsert({
     where: { userId: user.id },
@@ -62,7 +60,7 @@ export async function updatePreallocationSettings(data: {
 }
 
 export async function resetAllData() {
-  const user = await getOrCreateUser()
+  const user = await getCurrentUser()
 
   await prisma.$transaction([
     prisma.amazonOrder.deleteMany({

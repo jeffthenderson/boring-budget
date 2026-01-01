@@ -7,6 +7,7 @@ import { Button } from '../components/Button'
 import { parseCurrency } from '@/lib/utils/currency'
 import { useRouter } from 'next/navigation'
 import { TopNav } from '../components/TopNav'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 export default function SettingsPage() {
   const [charityPercent, setCharityPercent] = useState('0')
@@ -19,6 +20,13 @@ export default function SettingsPage() {
   const [savingIgnore, setSavingIgnore] = useState(false)
   const [resetPhrase, setResetPhrase] = useState('')
   const [resetting, setResetting] = useState(false)
+  const [mfaFactors, setMfaFactors] = useState<any[]>([])
+  const [mfaLoading, setMfaLoading] = useState(false)
+  const [mfaError, setMfaError] = useState('')
+  const [enrollQr, setEnrollQr] = useState<string | null>(null)
+  const [enrollSecret, setEnrollSecret] = useState<string | null>(null)
+  const [enrollFactorId, setEnrollFactorId] = useState<string | null>(null)
+  const [enrollCode, setEnrollCode] = useState('')
   const router = useRouter()
 
   useEffect(() => {
@@ -31,6 +39,7 @@ export default function SettingsPage() {
       })
 
     loadIgnoreRules()
+    loadMfaFactors()
   }, [])
 
   async function loadIgnoreRules() {
@@ -127,6 +136,99 @@ export default function SettingsPage() {
       alert(error?.message || 'Failed to reset budget.')
     } finally {
       setResetting(false)
+    }
+  }
+
+  async function loadMfaFactors() {
+    setMfaLoading(true)
+    setMfaError('')
+    try {
+      const supabase = createSupabaseBrowserClient()
+      const { data, error } = await supabase.auth.mfa.listFactors()
+      if (error) {
+        setMfaError(error.message)
+        return
+      }
+      setMfaFactors(data?.totp ?? [])
+    } catch (err: any) {
+      setMfaError(err?.message || 'Failed to load MFA factors.')
+    } finally {
+      setMfaLoading(false)
+    }
+  }
+
+  async function handleEnrollMfa() {
+    setMfaLoading(true)
+    setMfaError('')
+    try {
+      const supabase = createSupabaseBrowserClient()
+      const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' })
+      if (error) {
+        setMfaError(error.message)
+        return
+      }
+      setEnrollFactorId(data.id)
+      setEnrollQr(data.totp.qr_code)
+      setEnrollSecret(data.totp.secret)
+    } catch (err: any) {
+      setMfaError(err?.message || 'Failed to start MFA enrollment.')
+    } finally {
+      setMfaLoading(false)
+    }
+  }
+
+  async function handleVerifyMfa(e: React.FormEvent) {
+    e.preventDefault()
+    if (!enrollFactorId) return
+
+    setMfaLoading(true)
+    setMfaError('')
+    try {
+      const supabase = createSupabaseBrowserClient()
+      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
+        factorId: enrollFactorId,
+      })
+      if (challengeError) {
+        setMfaError(challengeError.message)
+        return
+      }
+      const { error: verifyError } = await supabase.auth.mfa.verify({
+        factorId: enrollFactorId,
+        challengeId: challengeData.id,
+        code: enrollCode,
+      })
+      if (verifyError) {
+        setMfaError(verifyError.message)
+        return
+      }
+
+      setEnrollQr(null)
+      setEnrollSecret(null)
+      setEnrollFactorId(null)
+      setEnrollCode('')
+      await loadMfaFactors()
+    } catch (err: any) {
+      setMfaError(err?.message || 'Failed to verify MFA enrollment.')
+    } finally {
+      setMfaLoading(false)
+    }
+  }
+
+  async function handleDisableMfa(factorId: string) {
+    setMfaLoading(true)
+    setMfaError('')
+    try {
+      const supabase = createSupabaseBrowserClient()
+      const { error } = await supabase.auth.mfa.unenroll({ factorId })
+      if (error) {
+        setMfaError(error.message)
+        return
+      }
+      await loadMfaFactors()
+    } catch (err: any) {
+      setMfaError(err?.message || 'Failed to disable MFA.')
+    } finally {
+      setMfaLoading(false)
     }
   }
 
@@ -235,6 +337,70 @@ export default function SettingsPage() {
 
         <div className="mt-4 text-sm text-monday-3pm">
           Ignored rules apply during CSV import and will remove matching imported transactions.
+        </div>
+      </Card>
+
+      <Card title="Security">
+        <div className="space-y-4">
+          <p className="text-sm text-monday-3pm">
+            Add an authenticator app for multi-factor authentication. (Extra tedium, maximum safety.)
+          </p>
+
+          {mfaError && (
+            <div className="text-sm text-monday-3pm">{mfaError}</div>
+          )}
+
+          {mfaFactors.length > 0 ? (
+            <div className="space-y-2">
+              {mfaFactors.map(factor => (
+                <div key={factor.id} className="flex items-center justify-between text-sm">
+                  <span>Authenticator app enabled</span>
+                  <Button
+                    type="button"
+                    disabled={mfaLoading}
+                    onClick={() => handleDisableMfa(factor.id)}
+                  >
+                    {mfaLoading ? 'WORKING...' : 'DISABLE MFA'}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <Button type="button" disabled={mfaLoading} onClick={handleEnrollMfa}>
+              {mfaLoading ? 'WORKING...' : 'ENABLE MFA'}
+            </Button>
+          )}
+
+          {enrollQr && enrollFactorId && (
+            <div className="space-y-3 border border-dashed border-monday-3pm/40 p-4">
+              <p className="text-sm text-monday-3pm">
+                Scan this QR code in your authenticator app, then enter the 6-digit code to confirm.
+              </p>
+              <img
+                src={enrollQr}
+                alt="MFA QR Code"
+                className="h-40 w-40 bg-white p-2"
+              />
+              {enrollSecret && (
+                <div className="text-xs text-monday-3pm">
+                  Manual setup key: <span className="font-mono">{enrollSecret}</span>
+                </div>
+              )}
+              <form onSubmit={handleVerifyMfa} className="space-y-3">
+                <Input
+                  label="Verification Code"
+                  type="text"
+                  inputMode="numeric"
+                  value={enrollCode}
+                  onChange={setEnrollCode}
+                  required
+                />
+                <Button type="submit" disabled={mfaLoading}>
+                  {mfaLoading ? 'VERIFYING...' : 'VERIFY MFA'}
+                </Button>
+              </form>
+            </div>
+          )}
         </div>
       </Card>
 

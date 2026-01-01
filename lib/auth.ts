@@ -1,16 +1,16 @@
-export const AUTH_COOKIE_NAME = 'bb_auth'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 
-export async function hashPasscode(passcode: string): Promise<string> {
-  const encoder = new TextEncoder()
-  const data = encoder.encode(passcode)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-  return Array.from(new Uint8Array(hashBuffer))
-    .map(byte => byte.toString(16).padStart(2, '0'))
-    .join('')
+export async function getCurrentSupabaseUser() {
+  const supabase = await createSupabaseServerClient()
+  const { data, error } = await supabase.auth.getUser()
+  if (error) return null
+  return data.user ?? null
 }
 
-export async function getExpectedPasscodeHash(): Promise<string | null> {
-  const passcode = process.env.BB_PASSCODE
-  if (!passcode) return null
-  return hashPasscode(passcode)
+export async function requireUserId() {
+  const user = await getCurrentSupabaseUser()
+  if (!user) {
+    throw new Error('Unauthorized')
+  }
+  return user.id
 }
