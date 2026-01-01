@@ -24,6 +24,7 @@ Set these values from `.env.production.local`:
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `AMAZON_IMPORT_SECRET`
 - `OPENAI_API_KEY` (if Amazon categorization is enabled)
+- `BB_PASSCODE` is no longer used and can be removed if it exists.
 
 CLI examples:
 
@@ -53,7 +54,18 @@ vercel env rm POSTGRES_URL -y
 vercel env rm POSTGRES_PRISMA_URL -y
 ```
 
-## 4) Deploy
+## 4) Preview/Development Env Vars
+
+Point Preview/Development at a staging Supabase project (not prod):
+
+```bash
+vercel env update DATABASE_URL preview
+vercel env update DIRECT_URL preview
+vercel env update NEXT_PUBLIC_SUPABASE_URL preview
+vercel env update NEXT_PUBLIC_SUPABASE_ANON_KEY preview
+```
+
+## 5) Deploy
 
 ```bash
 vercel --prod
@@ -69,7 +81,7 @@ vercel ls
 vercel inspect <deployment-url> --logs
 ```
 
-## 5) Optional Data Migration (Neon -> Supabase)
+## 6) Optional Data Migration (Neon -> Supabase)
 
 1) Dump data from Neon:
 
@@ -117,7 +129,7 @@ DELETE FROM "User" WHERE id = '<old-neon-user-id>';
 COMMIT;
 ```
 
-## 6) Post-deploy Checks
+## 7) Post-deploy Checks
 
 - Login at `/login` and verify budgets, transactions, and imports.
 - Re-send invites or password resets to ensure links point at the prod domain.
