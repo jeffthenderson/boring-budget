@@ -1,7 +1,7 @@
 'use server'
 
 import { prisma } from '@/lib/db'
-import { getOrCreateUser } from './user'
+import { getCurrentUser } from './user'
 import { revalidatePath } from 'next/cache'
 import { normalizeDescription, buildCompositeDescription } from '@/lib/utils/import/normalizer'
 import { getExpenseAmount } from '@/lib/utils/transaction-amounts'
@@ -20,7 +20,7 @@ export async function createRecurringDefinition(data: {
   frequency: string
   schedulingRule: SchedulingRule | string
 }) {
-  const user = await getOrCreateUser()
+  const user = await getCurrentUser()
   const merchantLabel = data.merchantLabel.trim()
   const displayLabel = (data.displayLabel ?? '').trim() || merchantLabel
   const schedulingRule = typeof data.schedulingRule === 'string'
@@ -48,7 +48,7 @@ export async function createRecurringDefinition(data: {
   })
 
   for (const period of openPeriods) {
-    await generateProjectedTransactionsForDefinition(definition.id, period.id, period.year, period.month)
+    await generateProjectedTransactionsForDefinition(user.id, definition.id, period.id, period.year, period.month)
   }
 
   revalidatePath('/')
@@ -92,8 +92,17 @@ export async function updateRecurringDefinition(id: string, data: {
     updateData.displayLabel = trimmed ? trimmed : null
   }
 
+  const user = await getCurrentUser()
+  const existing = await prisma.recurringDefinition.findFirst({
+    where: { id, userId: user.id },
+  })
+
+  if (!existing) {
+    throw new Error('Recurring definition not found')
+  }
+
   const definition = await prisma.recurringDefinition.update({
-    where: { id },
+    where: { id: existing.id },
     data: updateData,
   })
 
@@ -101,23 +110,20 @@ export async function updateRecurringDefinition(id: string, data: {
     where: {
       recurringDefinitionId: id,
       status: 'projected',
+      period: { userId: user.id },
     },
   })
 
   if (definition.active) {
     const openPeriods = await prisma.budgetPeriod.findMany({
       where: {
-        user: {
-          recurringDefinitions: {
-            some: { id },
-          },
-        },
+        userId: user.id,
         status: 'open',
       },
     })
 
     for (const period of openPeriods) {
-      await generateProjectedTransactionsForDefinition(id, period.id, period.year, period.month)
+      await generateProjectedTransactionsForDefinition(user.id, id, period.id, period.year, period.month)
     }
   }
 
@@ -126,12 +132,21 @@ export async function updateRecurringDefinition(id: string, data: {
 }
 
 export async function deleteRecurringDefinition(id: string) {
+  const user = await getCurrentUser()
+  const definition = await prisma.recurringDefinition.findFirst({
+    where: { id, userId: user.id },
+  })
+
+  if (!definition) {
+    throw new Error('Recurring definition not found')
+  }
+
   await prisma.transaction.deleteMany({
-    where: { recurringDefinitionId: id },
+    where: { recurringDefinitionId: definition.id, period: { userId: user.id } },
   })
 
   await prisma.recurringDefinition.delete({
-    where: { id },
+    where: { id: definition.id },
   })
 
   revalidatePath('/')
@@ -139,8 +154,9 @@ export async function deleteRecurringDefinition(id: string) {
 }
 
 export async function generateProjectedTransactions(periodId: string, year: number, month: number) {
-  const period = await prisma.budgetPeriod.findUnique({
-    where: { id: periodId },
+  const user = await getCurrentUser()
+  const period = await prisma.budgetPeriod.findFirst({
+    where: { id: periodId, userId: user.id },
     include: { user: { include: { recurringDefinitions: true } } },
   })
 
@@ -149,18 +165,19 @@ export async function generateProjectedTransactions(periodId: string, year: numb
   const definitions = period.user.recurringDefinitions.filter(d => d.active)
 
   for (const definition of definitions) {
-    await generateProjectedTransactionsForDefinition(definition.id, periodId, year, month)
+    await generateProjectedTransactionsForDefinition(user.id, definition.id, periodId, year, month)
   }
 }
 
 async function generateProjectedTransactionsForDefinition(
+  userId: string,
   definitionId: string,
   periodId: string,
   year: number,
   month: number
 ) {
-  const definition = await prisma.recurringDefinition.findUnique({
-    where: { id: definitionId },
+  const definition = await prisma.recurringDefinition.findFirst({
+    where: { id: definitionId, userId },
   })
 
   if (!definition || !definition.active) return
@@ -205,7 +222,7 @@ async function generateProjectedTransactionsForDefinition(
 }
 
 export async function getAllRecurringDefinitions() {
-  const user = await getOrCreateUser()
+  const user = await getCurrentUser()
 
   return prisma.recurringDefinition.findMany({
     where: { userId: user.id },
@@ -220,8 +237,9 @@ export async function matchExistingImportsForPeriod(
     revalidate?: boolean
   }
 ) {
-  const period = await prisma.budgetPeriod.findUnique({
-    where: { id: periodId },
+  const user = await getCurrentUser()
+  const period = await prisma.budgetPeriod.findFirst({
+    where: { id: periodId, userId: user.id },
     include: {
       user: { include: { recurringDefinitions: true } },
       transactions: {
@@ -346,7 +364,7 @@ export async function matchExistingImportsForPeriod(
 }
 
 export async function matchExistingImportsForOpenPeriods(definitionIds?: string[]) {
-  const user = await getOrCreateUser()
+  const user = await getCurrentUser()
 
   const openPeriods = await prisma.budgetPeriod.findMany({
     where: {

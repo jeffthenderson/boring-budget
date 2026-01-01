@@ -1,7 +1,7 @@
 'use server'
 
 import { prisma } from '@/lib/db'
-import { getOrCreateUser } from './user'
+import { getCurrentUser } from './user'
 import { revalidatePath } from 'next/cache'
 import { normalizeDescription, buildCompositeDescription } from '@/lib/utils/import/normalizer'
 
@@ -17,7 +17,7 @@ export interface IgnoreRuleResult {
 }
 
 export async function getIgnoreRules() {
-  const user = await getOrCreateUser()
+  const user = await getCurrentUser()
 
   return prisma.ignoreRule.findMany({
     where: { userId: user.id },
@@ -26,7 +26,7 @@ export async function getIgnoreRules() {
 }
 
 export async function createIgnoreRule(pattern: string): Promise<IgnoreRuleResult> {
-  const user = await getOrCreateUser()
+  const user = await getCurrentUser()
   const trimmed = pattern.trim()
   const normalizedPattern = normalizeDescription(trimmed)
 
@@ -66,8 +66,9 @@ export async function createIgnoreRule(pattern: string): Promise<IgnoreRuleResul
 }
 
 export async function deleteIgnoreRule(id: string) {
-  await prisma.ignoreRule.delete({
-    where: { id },
+  const user = await getCurrentUser()
+  await prisma.ignoreRule.deleteMany({
+    where: { id, userId: user.id },
   })
 
   revalidatePath('/settings')
@@ -75,19 +76,29 @@ export async function deleteIgnoreRule(id: string) {
 }
 
 export async function toggleIgnoreRule(id: string, active: boolean) {
-  const rule = await prisma.ignoreRule.update({
-    where: { id },
+  const user = await getCurrentUser()
+  const rule = await prisma.ignoreRule.findFirst({
+    where: { id, userId: user.id },
+  })
+
+  if (!rule) {
+    throw new Error('Ignore rule not found')
+  }
+
+  const updated = await prisma.ignoreRule.update({
+    where: { id: rule.id },
     data: { active },
   })
 
   revalidatePath('/settings')
   revalidatePath('/import')
-  return rule
+  return updated
 }
 
 export async function createIgnoreRuleFromTransaction(transactionId: string) {
-  const transaction = await prisma.transaction.findUnique({
-    where: { id: transactionId },
+  const user = await getCurrentUser()
+  const transaction = await prisma.transaction.findFirst({
+    where: { id: transactionId, period: { userId: user.id } },
     include: { period: true },
   })
 
@@ -124,12 +135,13 @@ async function applyIgnoreRuleToImports(userId: string, normalizedPattern: strin
     where: {
       sourceImportHash: { in: hashes },
       source: 'import',
+      period: { userId },
     },
     data: { isIgnored: true },
   })
 
   await prisma.rawImportRow.updateMany({
-    where: { hashKey: { in: hashes } },
+    where: { hashKey: { in: hashes }, account: { userId } },
     data: { status: 'ignored', ignoreReason: 'ignore_rule' },
   })
 

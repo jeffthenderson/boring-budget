@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { cookies } from 'next/headers'
-import { AUTH_COOKIE_NAME } from '@/lib/auth'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
+import LogoutButton from './components/LogoutButton'
 
 export const metadata: Metadata = {
   title: "Boring Budget | Thrillingly Tedious",
@@ -13,16 +13,15 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const authCookie = (await cookies()).get(AUTH_COOKIE_NAME)
+  const supabase = await createSupabaseServerClient({ allowMissing: true })
+  const { data } = supabase ? await supabase.auth.getUser() : { data: { user: null } }
 
   return (
     <html lang="en">
       <body className="antialiased">
-        {authCookie && (
+        {data.user && (
           <div className="px-6 py-3 text-right text-xs">
-            <a href="/api/logout" className="text-monday-3pm hover:underline">
-              LOGOUT
-            </a>
+            <LogoutButton />
           </div>
         )}
         {children}

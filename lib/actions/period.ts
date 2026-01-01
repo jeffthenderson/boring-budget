@@ -1,7 +1,7 @@
 'use server'
 
 import { prisma } from '@/lib/db'
-import { getOrCreateUser } from './user'
+import { getCurrentUser } from './user'
 import { revalidatePath } from 'next/cache'
 import { BUDGET_CATEGORIES, RECURRING_CATEGORIES, isIncomeCategory } from '@/lib/constants/categories'
 import { roundCurrency } from '@/lib/utils/currency'
@@ -78,7 +78,7 @@ function isUniqueConstraintError(error: unknown): boolean {
 }
 
 export async function getCurrentOrCreatePeriod(year?: number, month?: number) {
-  const user = await getOrCreateUser()
+  const user = await getCurrentUser()
 
   const now = new Date()
   const targetYear = year ?? now.getFullYear()
@@ -113,7 +113,7 @@ export async function getCurrentOrCreatePeriod(year?: number, month?: number) {
 }
 
 export async function createPeriod(year: number, month: number) {
-  const user = await getOrCreateUser()
+  const user = await getCurrentUser()
 
   try {
     const period = await prisma.budgetPeriod.create({
@@ -172,8 +172,9 @@ export async function createPeriod(year: number, month: number) {
 }
 
 export async function togglePeriodLock(periodId: string) {
-  const period = await prisma.budgetPeriod.findUnique({
-    where: { id: periodId },
+  const user = await getCurrentUser()
+  const period = await prisma.budgetPeriod.findFirst({
+    where: { id: periodId, userId: user.id },
   })
 
   if (!period) {
@@ -196,9 +197,19 @@ export async function addIncomeItem(periodId: string, data: {
   source: string
   amount: number
 }) {
+  const user = await getCurrentUser()
+  const period = await prisma.budgetPeriod.findFirst({
+    where: { id: periodId, userId: user.id },
+    select: { id: true },
+  })
+
+  if (!period) {
+    throw new Error('Period not found')
+  }
+
   const item = await prisma.incomeItem.create({
     data: {
-      periodId,
+      periodId: period.id,
       ...data,
     },
   })
@@ -208,8 +219,9 @@ export async function addIncomeItem(periodId: string, data: {
 }
 
 export async function deleteIncomeItem(id: string) {
-  await prisma.incomeItem.delete({
-    where: { id },
+  const user = await getCurrentUser()
+  await prisma.incomeItem.deleteMany({
+    where: { id, period: { userId: user.id } },
   })
 
   revalidatePath('/')
@@ -217,15 +229,25 @@ export async function deleteIncomeItem(id: string) {
 }
 
 export async function updateCategoryBudget(periodId: string, category: string, amount: number) {
+  const user = await getCurrentUser()
+  const period = await prisma.budgetPeriod.findFirst({
+    where: { id: periodId, userId: user.id },
+    select: { id: true },
+  })
+
+  if (!period) {
+    throw new Error('Period not found')
+  }
+
   const budget = await prisma.categoryBudget.upsert({
     where: {
       periodId_category: {
-        periodId,
+        periodId: period.id,
         category,
       },
     },
     create: {
-      periodId,
+      periodId: period.id,
       category,
       amountBudgeted: amount,
     },
@@ -242,8 +264,9 @@ export async function suggestCategoryBudgets(
   periodId: string,
   options?: { monthsBack?: number }
 ) {
-  const period = await prisma.budgetPeriod.findUnique({
-    where: { id: periodId },
+  const user = await getCurrentUser()
+  const period = await prisma.budgetPeriod.findFirst({
+    where: { id: periodId, userId: user.id },
     select: { id: true, userId: true },
   })
 

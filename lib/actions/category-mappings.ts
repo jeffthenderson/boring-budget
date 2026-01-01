@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
-import { getOrCreateUser } from './user'
+import { getCurrentUser } from './user'
 import { normalizeDescription, buildCompositeDescription } from '@/lib/utils/import/normalizer'
 
 export async function createCategoryMappingRule(data: {
@@ -10,7 +10,7 @@ export async function createCategoryMappingRule(data: {
   subDescription?: string | null
   category: string
 }) {
-  const user = await getOrCreateUser()
+  const user = await getCurrentUser()
   const rawDescription = buildCompositeDescription(data.description, data.subDescription)
   const normalizedDescription = normalizeDescription(rawDescription)
 
@@ -65,7 +65,10 @@ export async function createCategoryMappingRule(data: {
 
   if (matchingIds.length > 0) {
     await prisma.transaction.updateMany({
-      where: { id: { in: matchingIds } },
+      where: {
+        id: { in: matchingIds },
+        period: { userId: user.id },
+      },
       data: { category: data.category },
     })
   }
@@ -80,7 +83,7 @@ export async function dismissCategoryMappingSuggestion(
   description: string,
   subDescription?: string | null
 ) {
-  const user = await getOrCreateUser()
+  const user = await getCurrentUser()
   const normalizedDescription = normalizeDescription(
     buildCompositeDescription(description, subDescription)
   )

@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
-import { getOrCreateUser } from './user'
+import { getCurrentUser } from './user'
 import { TRANSACTION_CATEGORIES, isRecurringCategory } from '@/lib/constants/categories'
 import { getExpenseAmount } from '@/lib/utils/transaction-amounts'
 
@@ -162,7 +162,7 @@ export async function categorizeTransactionsWithLLM(
   options: CategorizeOptions = {},
   onProgress?: (update: LLMProgressUpdate) => void
 ) {
-  const user = await getOrCreateUser()
+  const user = await getCurrentUser()
   const apiKey = process.env.OPENAI_API_KEY
   const model = process.env.OPENAI_MODEL || 'gpt-5-mini'
   const scope: CategorizeScope = options.scope === 'all' ? 'all' : 'period'

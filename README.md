@@ -49,11 +49,12 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### Authentication (Passcode Gate)
+### Authentication (Supabase)
 
-Set `BB_PASSCODE` in your `.env`. If `BB_PASSCODE` is not set, the app is unlocked (useful for local dev but not recommended for production).
+Authentication is handled by Supabase Auth with per-user sessions and optional MFA.
 
-Visit `/login` to unlock. A secure HTTP-only cookie is set and required for all routes.
+Visit `/login` to sign in. Accounts are invite-only. Sessions are enforced in middleware.
+See `docs/STAGING_ROLLOUT.md` for staging rollout and RLS verification steps.
 
 ### Environment Variables
 
@@ -62,12 +63,14 @@ Minimum required values:
 ```
 DATABASE_URL=postgresql://...
 DIRECT_URL=postgresql://...
-BB_PASSCODE=your-long-passphrase
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+AMAZON_IMPORT_SECRET=your-long-secret
 ```
 
 ### Vercel
 
-Add the same env vars (`DATABASE_URL`, `DIRECT_URL`, `BB_PASSCODE`) in Vercel and deploy.
+Add the same env vars (`DATABASE_URL`, `DIRECT_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `AMAZON_IMPORT_SECRET`) in Vercel and deploy.
 
 ### First Run
 
