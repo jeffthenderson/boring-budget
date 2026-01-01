@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { createSupabaseServerClient } from '@/lib/supabase/server'
-import LogoutButton from './components/LogoutButton'
+import AuthStatus from './components/AuthStatus'
 
 export const metadata: Metadata = {
   title: "Boring Budget | Thrillingly Tedious",
@@ -13,17 +12,10 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const supabase = await createSupabaseServerClient({ allowMissing: true })
-  const { data } = supabase ? await supabase.auth.getUser() : { data: { user: null } }
-
   return (
     <html lang="en">
       <body className="antialiased">
-        {data.user && (
-          <div className="px-6 py-3 text-right text-xs">
-            <LogoutButton />
-          </div>
-        )}
+        <AuthStatus />
         {children}
       </body>
     </html>
