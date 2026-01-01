@@ -88,3 +88,8 @@ Legend: [x] done  [~] partial  [ ] not started
 
 ## Someday / Maybe
 - Auto-categorize transactions (history first, LLM fallback)
+
+## Ops + doc follow-ups
+- [ ] Verify production auth flows end-to-end (invite, password reset, MFA enrollment)
+- [ ] Add tests or manual smoke checks for CSV import dedupe + recurring match linking
+- [ ] Type `Period` and `Settings` in `app/components/BudgetDashboard.tsx`
