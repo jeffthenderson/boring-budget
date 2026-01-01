@@ -6,6 +6,7 @@ import { Card } from '../components/Card'
 import { Button } from '../components/Button'
 import { parseCSVFile, detectColumnMapping, type CSVParseResult, type ColumnMapping } from '@/lib/utils/import/csv-parser'
 import Link from 'next/link'
+import { TopNav } from '../components/TopNav'
 
 type Step = 'select' | 'map' | 'preview' | 'complete'
 type PeriodMode = 'current' | 'auto' | 'specific'
@@ -351,10 +352,10 @@ function ImportWizard() {
 
   if (step === 'select') {
     return (
-      <div className="min-h-screen p-8">
+      <div className="min-h-screen p-4 md:p-8">
         {importOverlay}
+        <TopNav />
         <header className="mb-8">
-          <Link href="/accounts" className="text-dark hover:underline text-sm">← BACK TO ACCOUNTS</Link>
           <h1 className="text-2xl uppercase tracking-widest font-medium text-dark mt-4 mb-2">
             CSV Import Wizard
           </h1>
@@ -404,7 +405,7 @@ function ImportWizard() {
                     {files.map(file => (
                       <div
                         key={file.id}
-                        className="grid grid-cols-[2fr_2fr_1fr_auto] gap-4 items-center border-b border-cubicle-taupe pb-3"
+                        className="grid grid-cols-1 md:grid-cols-[2fr_2fr_1fr_auto] gap-3 items-start md:items-center border-b border-cubicle-taupe pb-3"
                       >
                         <div>
                           <div className="font-medium">{file.file.name}</div>
@@ -433,9 +434,11 @@ function ImportWizard() {
                         <div className="text-xs text-monday-3pm">
                           {file.accountType ? `Using ${file.accountType === 'credit_card' ? 'credit card' : 'bank'} rules` : 'No account'}
                         </div>
-                        <Button variant="secondary" onClick={() => handleRemoveFile(file.id)}>
-                          REMOVE
-                        </Button>
+                        <div className="flex md:justify-end">
+                          <Button variant="secondary" onClick={() => handleRemoveFile(file.id)}>
+                            REMOVE
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -465,7 +468,7 @@ function ImportWizard() {
                   )}
                 </div>
 
-                <div className="flex gap-4">
+                <div className="flex flex-wrap gap-4">
                   <Button onClick={startMapping} disabled={!canProceedToMap}>
                     NEXT: MAP COLUMNS
                   </Button>
@@ -483,10 +486,10 @@ function ImportWizard() {
     const mapping = activeFile.mapping
 
     return (
-      <div className="min-h-screen p-8">
+      <div className="min-h-screen p-4 md:p-8">
         {importOverlay}
+        <TopNav />
         <header className="mb-8">
-          <Link href="/import" className="text-dark hover:underline text-sm">← START OVER</Link>
           <h1 className="text-2xl uppercase tracking-widest font-medium text-dark mt-4 mb-2">
             CSV Import Wizard
           </h1>
@@ -509,7 +512,7 @@ function ImportWizard() {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
                 <label className="text-xs uppercase tracking-wider text-dark font-medium">
                   Date Column (REQUIRED)
@@ -620,7 +623,7 @@ function ImportWizard() {
               </div>
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex flex-wrap gap-4">
               <Button onClick={() => moveMapping('prev')}>BACK</Button>
               <Button onClick={() => moveMapping('next')}>
                 {currentFileIndex === files.length - 1 ? 'NEXT: PREVIEW' : 'NEXT FILE'}
@@ -634,10 +637,10 @@ function ImportWizard() {
 
   if (step === 'preview') {
     return (
-      <div className="min-h-screen p-8">
+      <div className="min-h-screen p-4 md:p-8">
         {importOverlay}
+        <TopNav />
         <header className="mb-8">
-          <Link href="/import" className="text-dark hover:underline text-sm">← START OVER</Link>
           <h1 className="text-2xl uppercase tracking-widest font-medium text-dark mt-4 mb-2">
             CSV Import Wizard
           </h1>
@@ -689,7 +692,7 @@ function ImportWizard() {
               </ul>
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex flex-wrap gap-4">
               <Button onClick={() => setStep('map')}>BACK</Button>
               <Button onClick={handleImport} disabled={importing}>
                 {importing ? 'IMPORTING... (Please wait.)' : 'START IMPORT'}
@@ -707,10 +710,10 @@ function ImportWizard() {
       : new Set<string>()
 
     return (
-      <div className="min-h-screen p-8">
+      <div className="min-h-screen p-4 md:p-8">
         {importOverlay}
+        <TopNav />
         <header className="mb-8">
-          <Link href="/" className="text-dark hover:underline text-sm">← BACK TO BUDGET</Link>
           <h1 className="text-2xl uppercase tracking-widest font-medium text-dark mt-4 mb-2">
             Import Complete
           </h1>
@@ -721,7 +724,7 @@ function ImportWizard() {
 
         <Card title="Import Summary">
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="p-3 border-2 border-dark bg-white">
                 <div className="text-2xl font-medium">{summary.imported}</div>
                 <div className="text-xs uppercase text-monday-3pm">Imported</div>
@@ -762,7 +765,7 @@ function ImportWizard() {
               )}
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex flex-wrap gap-4">
               <Link href="/">
                 <Button>VIEW BUDGET</Button>
               </Link>
@@ -798,7 +801,7 @@ function mergeSummaries(base: ImportSummary, next: ImportSummary): ImportSummary
 
 export default function ImportPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen p-8">Loading...</div>}>
+    <Suspense fallback={<div className="min-h-screen p-4 md:p-8">Loading...</div>}>
       <ImportWizard />
     </Suspense>
   )

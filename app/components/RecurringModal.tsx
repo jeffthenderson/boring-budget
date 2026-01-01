@@ -84,19 +84,23 @@ export function RecurringModal({
     const trimmedDisplay = displayLabel.trim()
     const finalDisplayLabel = trimmedDisplay || trimmedMerchant
 
-    let schedulingRule = {}
+    let schedulingRule: any = {}
     switch (frequency) {
       case 'monthly':
-        schedulingRule = { dayOfMonth: parseInt(dayOfMonth) }
+        schedulingRule = { type: 'monthly', dayOfMonth: parseInt(dayOfMonth) }
         break
       case 'weekly':
-        schedulingRule = { dayOfWeek: parseInt(dayOfWeek) }
+        schedulingRule = { type: 'weekly', weekday: parseInt(dayOfWeek) }
         break
       case 'biweekly':
-        schedulingRule = { dayOfWeek: parseInt(dayOfWeek) }
+        schedulingRule = {
+          type: 'biweekly',
+          weekday: parseInt(dayOfWeek),
+          anchorDate: txDate.toISOString().split('T')[0],
+        }
         break
       case 'twice_monthly':
-        schedulingRule = { firstDay: parseInt(firstDay), secondDay: parseInt(secondDay) }
+        schedulingRule = { type: 'twice_monthly', firstDay: parseInt(firstDay), secondDay: parseInt(secondDay) }
         break
     }
 

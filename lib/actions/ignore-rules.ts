@@ -120,11 +120,12 @@ async function applyIgnoreRuleToImports(userId: string, normalizedPattern: strin
     return 0
   }
 
-  const deleted = await prisma.transaction.deleteMany({
+  const updated = await prisma.transaction.updateMany({
     where: {
       sourceImportHash: { in: hashes },
       source: 'import',
     },
+    data: { isIgnored: true },
   })
 
   await prisma.rawImportRow.updateMany({
@@ -132,5 +133,5 @@ async function applyIgnoreRuleToImports(userId: string, normalizedPattern: strin
     data: { status: 'ignored', ignoreReason: 'ignore_rule' },
   })
 
-  return deleted.count
+  return updated.count
 }

@@ -1,4 +1,4 @@
-export const CATEGORIES = [
+export const BUDGET_CATEGORIES = [
   'Recurring - Essential',
   'Recurring - Non-Essential',
   'Auto',
@@ -9,7 +9,16 @@ export const CATEGORIES = [
   'Other - Responsible',
 ] as const
 
-export type Category = typeof CATEGORIES[number]
+export const CATEGORIES = BUDGET_CATEGORIES
+
+export const TRANSACTION_CATEGORIES = [
+  ...BUDGET_CATEGORIES,
+  'Income',
+  'Uncategorized',
+] as const
+
+export type Category = typeof TRANSACTION_CATEGORIES[number]
+export type BudgetCategory = typeof BUDGET_CATEGORIES[number]
 
 export const RECURRING_CATEGORIES = [
   'Recurring - Essential',
@@ -29,9 +38,18 @@ export const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
   'Entertainment': { bg: 'bg-pink-100', text: 'text-pink-800' },
   'Other - Fun': { bg: 'bg-yellow-100', text: 'text-yellow-800' },
   'Other - Responsible': { bg: 'bg-cyan-100', text: 'text-cyan-800' },
+  'Income': { bg: 'bg-emerald-100', text: 'text-emerald-800' },
   'Uncategorized': { bg: 'bg-gray-100', text: 'text-gray-800' },
 }
 
 export function getCategoryColor(category: string): { bg: string; text: string } {
   return CATEGORY_COLORS[category] || { bg: 'bg-gray-100', text: 'text-gray-800' }
+}
+
+export function isIncomeCategory(category: string): boolean {
+  return category === 'Income'
+}
+
+export function isBudgetCategory(category: string): boolean {
+  return BUDGET_CATEGORIES.includes(category as BudgetCategory)
 }

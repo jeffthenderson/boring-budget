@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { CATEGORIES, isRecurringCategory, getCategoryColor, type Category } from '@/lib/constants/categories'
+import { TRANSACTION_CATEGORIES, isRecurringCategory, getCategoryColor } from '@/lib/constants/categories'
 
 interface InlineCategoryEditorProps {
   transactionId: string
@@ -23,7 +23,7 @@ export function InlineCategoryEditor({
   const dropdownRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
 
-  const filteredCategories = CATEGORIES.filter((cat) =>
+  const filteredCategories = TRANSACTION_CATEGORIES.filter((cat) =>
     cat.toLowerCase().includes(searchTerm.toLowerCase())
   )
 

@@ -31,6 +31,7 @@ export interface RawRow {
   accountId: string
   accountType: 'credit_card' | 'bank'
   accountLast4?: string
+  accountInvertAmounts?: boolean
   parsedDate: Date
   parsedDescription: string
   normalizedDescription: string
@@ -49,6 +50,7 @@ export interface TransferCandidate {
  */
 export function isTransferCandidate(row: RawRow, allAccounts: Array<{ displayAlias?: string; last4?: string }>): boolean {
   const desc = row.normalizedDescription
+  const transferAmount = getTransferAmount(row)
 
   // Credit card payment from bank side
   if (row.accountType === 'bank') {
@@ -71,7 +73,7 @@ export function isTransferCandidate(row: RawRow, allAccounts: Array<{ displayAli
   }
 
   // Credit card payment from card side
-  if (row.accountType === 'credit_card' && row.normalizedAmount < 0) {
+  if (row.accountType === 'credit_card' && transferAmount < 0) {
     // Negative amount on credit card with payment keywords
     if (PAYMENT_KEYWORDS.some(keyword => desc.includes(keyword))) {
       return true
@@ -103,13 +105,13 @@ export function pairCreditCardPayments(rows: RawRow[]): Map<string, TransferCand
   const cardRows = rows.filter(r => r.accountType === 'credit_card')
 
   for (const bankRow of bankRows) {
-    if (bankRow.normalizedAmount >= 0) continue // Only negative bank amounts
+    if (getTransferAmount(bankRow) >= 0) continue // Only negative bank amounts
 
     for (const cardRow of cardRows) {
-      if (cardRow.normalizedAmount >= 0) continue // Only negative card amounts (payments)
+      if (getTransferAmount(cardRow) >= 0) continue // Only negative card amounts (payments)
 
       // Check if amounts match (absolute values)
-      const amountMatch = Math.abs(Math.abs(bankRow.normalizedAmount) - Math.abs(cardRow.normalizedAmount)) < 0.01
+      const amountMatch = Math.abs(Math.abs(getTransferAmount(bankRow)) - Math.abs(getTransferAmount(cardRow))) < 0.01
 
       if (!amountMatch) continue
 
@@ -153,9 +155,9 @@ export function pairInterAccountTransfers(rows: RawRow[]): Map<string, TransferC
       if (row1.accountId === row2.accountId) continue
 
       // Check if amounts are equal but opposite signs
-      const amountMatch = Math.abs(Math.abs(row1.normalizedAmount) - Math.abs(row2.normalizedAmount)) < 0.01
-      const oppositeSigns = (row1.normalizedAmount > 0 && row2.normalizedAmount < 0) ||
-                           (row1.normalizedAmount < 0 && row2.normalizedAmount > 0)
+      const amountMatch = Math.abs(Math.abs(getTransferAmount(row1)) - Math.abs(getTransferAmount(row2))) < 0.01
+      const oppositeSigns = (getTransferAmount(row1) > 0 && getTransferAmount(row2) < 0) ||
+                           (getTransferAmount(row1) < 0 && getTransferAmount(row2) > 0)
 
       if (!amountMatch || !oppositeSigns) continue
 
@@ -225,4 +227,8 @@ export function detectTransfers(
   }
 
   return candidates
+}
+
+function getTransferAmount(row: RawRow): number {
+  return row.accountInvertAmounts ? -row.normalizedAmount : row.normalizedAmount
 }

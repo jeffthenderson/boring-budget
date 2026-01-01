@@ -5,7 +5,8 @@ import { prisma } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 import { getOrCreateUser } from './user'
 import { roundCurrency } from '@/lib/utils/currency'
-import { CATEGORIES, isRecurringCategory } from '@/lib/constants/categories'
+import { TRANSACTION_CATEGORIES, isRecurringCategory, isIncomeCategory } from '@/lib/constants/categories'
+import { getExpenseAmount } from '@/lib/utils/transaction-amounts'
 
 const AMAZON_KEYWORDS = ['amazon', 'amzn', 'amazon.ca']
 const MATCH_LOOKBACK_DAYS = (() => {
@@ -25,7 +26,9 @@ const MATCH_LOOKAHEAD_DAYS = (() => {
 })()
 const CREATE_CHUNK_SIZE = 200
 
-const ALLOWED_CATEGORIES = CATEGORIES.filter(cat => !isRecurringCategory(cat))
+const ALLOWED_CATEGORIES = TRANSACTION_CATEGORIES.filter(
+  cat => !isRecurringCategory(cat) && cat !== 'Uncategorized' && !isIncomeCategory(cat)
+)
 type AllowedCategory = (typeof ALLOWED_CATEGORIES)[number]
 
 export type AmazonOrderImport = {
@@ -348,8 +351,7 @@ export async function matchAmazonOrders(options?: { userId?: string; orderIds?: 
   })
 
   const transactionsWithAmount = transactions.map(tx => {
-    const accountType = tx.importBatch?.account?.type
-    const expenseAmount = accountType === 'credit_card' ? tx.amount : -tx.amount
+    const expenseAmount = getExpenseAmount(tx)
     const accountId = tx.importBatch?.account?.id || null
     return {
       id: tx.id,
@@ -509,8 +511,7 @@ export async function getAmazonMatchCandidates(orderId: string) {
   })
 
   const transactionsWithAmount = transactions.map(tx => {
-    const accountType = tx.importBatch?.account?.type
-    const expenseAmount = accountType === 'credit_card' ? tx.amount : -tx.amount
+    const expenseAmount = getExpenseAmount(tx)
     const accountId = tx.importBatch?.account?.id || null
     return {
       id: tx.id,

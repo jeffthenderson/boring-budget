@@ -15,6 +15,7 @@ import { detectTransfers, type RawRow } from '@/lib/utils/import/transfer-detect
 import { getBestRecurringMatch, matchAgainstDefinitions } from '@/lib/utils/import/recurring-matcher'
 import { ColumnMapping } from '@/lib/utils/import/csv-parser'
 import { getCurrentOrCreatePeriod } from './period'
+import { getExpenseAmount } from '@/lib/utils/transaction-amounts'
 
 export interface ProcessedRow {
   lineNumber: number
@@ -52,6 +53,7 @@ export interface ImportOptions {
 }
 
 const CREATE_CHUNK_SIZE = 500
+const INCOME_MATCH_WINDOW_DAYS = 30
 
 function chunkArray<T>(items: T[], size: number): T[][] {
   if (size <= 0) return [items]
@@ -178,6 +180,7 @@ export async function processCSVImport(
 
       const transactionType = mapping.transactionType ? row[mapping.transactionType] : undefined
       const normalizedAmount = normalizeAmount(parsedAmountBeforeNorm, accountType, transactionType)
+      const adjustedAmount = currentAccount.invertAmounts ? -normalizedAmount : normalizedAmount
       const normalizedDesc = normalizeDescription(
         buildCompositeDescription(parsedDescription, parsedSubDescription)
       )
@@ -186,7 +189,7 @@ export async function processCSVImport(
         accountId,
         periodId,
         parsedDate,
-        normalizedAmount,
+        adjustedAmount,
         normalizedDesc
       )
 
@@ -204,7 +207,7 @@ export async function processCSVImport(
         parsedDescription,
         parsedSubDescription: parsedSubDescription || undefined,
         parsedAmountBeforeNorm,
-        normalizedAmount,
+        normalizedAmount: adjustedAmount,
         normalizedDescription: normalizedDesc,
         externalId: row.externalId,
         hashKey,
@@ -220,10 +223,11 @@ export async function processCSVImport(
           accountId,
           accountType,
           accountLast4: currentAccount.last4 || undefined,
+          accountInvertAmounts: currentAccount.invertAmounts || false,
           parsedDate,
           parsedDescription,
           normalizedDescription: normalizedDesc,
-          normalizedAmount,
+          normalizedAmount: adjustedAmount,
           status: 'pending',
         })
       }
@@ -323,11 +327,54 @@ export async function processCSVImport(
 
   // Step 5: Create transactions for imported rows
   const pendingRows = rowsToCreate.filter(row => row.status === 'pending')
+  const ignoredRows = rowsToCreate.filter(row => row.status === 'ignored')
   let matchedRecurring = 0
   const pendingConfirmation = 0
   const projectedToDelete = new Set<string>()
 
-  const transactionsToCreate = pendingRows.map(row => {
+  const projectedIncomeCandidates = currentAccount.type === 'bank'
+    ? await prisma.transaction.findMany({
+        where: {
+          periodId,
+          category: 'Income',
+          status: 'projected',
+          isIgnored: false,
+        },
+      })
+    : []
+
+  const usedProjectedIncomeIds = new Set<string>()
+  const incomeMatches: Array<{ transactionId: string; row: ProcessedRow }> = []
+  const rowsForImport = pendingRows.filter(row => {
+    if (currentAccount.type !== 'bank' || projectedIncomeCandidates.length === 0) return true
+
+    const expenseAmount = getExpenseAmount({
+      amount: row.normalizedAmount,
+      source: 'import',
+      importBatch: { account: currentAccount },
+    })
+
+    if (expenseAmount >= 0) return true
+
+    const candidates = projectedIncomeCandidates.filter(candidate => {
+      if (usedProjectedIncomeIds.has(candidate.id)) return false
+      const projectedAmount = Math.abs(candidate.amount)
+      const tolerance = Math.max(100, projectedAmount * 0.1)
+      const amountDiff = Math.abs(Math.abs(expenseAmount) - projectedAmount)
+      if (amountDiff > tolerance) return false
+      const daysDiff = Math.abs(candidate.date.getTime() - row.parsedDate.getTime()) / (1000 * 60 * 60 * 24)
+      return daysDiff <= INCOME_MATCH_WINDOW_DAYS
+    })
+
+    if (candidates.length !== 1) return true
+
+    const match = candidates[0]
+    usedProjectedIncomeIds.add(match.id)
+    incomeMatches.push({ transactionId: match.id, row })
+    return false
+  })
+
+  const transactionsToCreate = rowsForImport.map(row => {
     let category = 'Uncategorized'
     let isRecurringInstance = false
     let recurringDefinitionId: string | undefined
@@ -382,8 +429,31 @@ export async function processCSVImport(
     }
   })
 
+  const ignoredTransactionsToCreate = ignoredRows.map(row => ({
+    periodId,
+    date: row.parsedDate,
+    description: row.parsedDescription,
+    subDescription: row.parsedSubDescription || undefined,
+    amount: row.normalizedAmount,
+    category: 'Uncategorized',
+    status: 'posted',
+    source: 'import',
+    importBatchId: batch.id,
+    externalId: row.externalId,
+    sourceImportHash: row.hashKey,
+    isRecurringInstance: false,
+    isIgnored: true,
+  }))
+
   if (transactionsToCreate.length > 0) {
     const createChunks = chunkArray(transactionsToCreate, CREATE_CHUNK_SIZE)
+    for (const chunk of createChunks) {
+      await prisma.transaction.createMany({ data: chunk })
+    }
+  }
+
+  if (ignoredTransactionsToCreate.length > 0) {
+    const createChunks = chunkArray(ignoredTransactionsToCreate, CREATE_CHUNK_SIZE)
     for (const chunk of createChunks) {
       await prisma.transaction.createMany({ data: chunk })
     }
@@ -395,6 +465,27 @@ export async function processCSVImport(
     })
   }
 
+  if (incomeMatches.length > 0) {
+    const updates = incomeMatches.map(match =>
+      prisma.transaction.update({
+        where: { id: match.transactionId },
+        data: {
+          date: match.row.parsedDate,
+          description: match.row.parsedDescription,
+          subDescription: match.row.parsedSubDescription || undefined,
+          amount: match.row.normalizedAmount,
+          category: 'Income',
+          status: 'posted',
+          source: 'import',
+          importBatchId: batch.id,
+          externalId: match.row.externalId,
+          sourceImportHash: match.row.hashKey,
+        },
+      })
+    )
+    await prisma.$transaction(updates)
+  }
+
   if (pendingRows.length > 0) {
     await prisma.rawImportRow.updateMany({
       where: { batchId: batch.id, status: 'pending' },
@@ -403,7 +494,7 @@ export async function processCSVImport(
   }
 
   // Update batch summary
-  const imported = transactionsToCreate.length
+  const imported = transactionsToCreate.length + incomeMatches.length
   const skippedDuplicates = processedRows.filter(r => r.status === 'duplicate').length
   const ignoredTransfers = processedRows.filter(r => r.status === 'ignored' && r.ignoreReason !== 'ignore_rule').length
   const ignoredByRule = processedRows.filter(r => r.status === 'ignored' && r.ignoreReason === 'ignore_rule').length
@@ -452,6 +543,9 @@ export async function processCSVImportWithMode(
 
     for (const group of grouped) {
       const period = await getCurrentOrCreatePeriod(group.year, group.month)
+      if (!period) {
+        throw new Error('Failed to load or create budget period.')
+      }
       const summary = await processCSVImport(
         accountId,
         period.id,
@@ -477,6 +571,9 @@ export async function processCSVImportWithMode(
     }
 
     const period = await getCurrentOrCreatePeriod(options.targetYear, options.targetMonth)
+    if (!period) {
+      throw new Error('Failed to load or create budget period.')
+    }
     return processCSVImport(accountId, period.id, rows, mapping, accountType)
   }
 

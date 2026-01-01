@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState, type DragEvent } from 'react'
-import Link from 'next/link'
+import { TopNav } from '../components/TopNav'
 import { Card } from '../components/Card'
 import { Button } from '../components/Button'
 import { Input } from '../components/Input'
@@ -432,9 +432,9 @@ export default function AmazonPage() {
   }
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-screen p-4 md:p-8">
+      <TopNav />
       <header className="mb-8">
-        <Link href="/" className="text-dark hover:underline text-sm">{'<- BACK TO BUDGET'}</Link>
         <h1 className="text-2xl uppercase tracking-widest font-medium text-dark mt-4 mb-2">
           Amazon Orders
         </h1>

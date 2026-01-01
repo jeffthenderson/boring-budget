@@ -11,12 +11,15 @@ Legend: [x] done  [~] partial  [ ] not started
 - [x] Recurring definitions with projected transactions counted as spent
 - [x] Manual add/delete transactions
 - [x] Budget vs actual (overall + category)
+- [x] Sortable transactions list (default date sort)
+- [x] Category/status filters (including Uncategorized)
 - [x] Full reset (clears budgets, imports, and accounts)
 
 ## CSV import
 - [x] Account management, import wizard, column mapping, summary counts
 - [x] Deduplication + transfer detection
 - [x] Sign normalization across bank vs credit card (supports debit/credit column)
+- [x] Ignored imports still appear (grayed out) with unignore option
 - [x] Ignore rules (create, list in settings, apply on import)
 - [x] Auto-detect account type from file (no manual selection)
 - [x] Multi-file drag/drop import
@@ -39,8 +42,15 @@ Legend: [x] done  [~] partial  [ ] not started
 - [x] Bankers rounding for all amount inputs
 - [x] Date handling issue: transaction list starts one day early in some months
 
-## Notes / next focus
-- Clarify expected sign conventions for imported bank/credit card CSVs
+## Income, refunds, reimbursements
+- [x] Income category with projected income transactions (matched to imports)
+- [x] Refund/reimbursement linking model + UI (links both directions)
+- [ ] Auto-link refunds/reimbursements from history (conservative heuristics)
+
+## Mobile UX
+- [x] Responsive padding/layout on core pages
+- [x] Budget table horizontal scroll on small screens
+- [x] Transaction list readable on mobile (stacked cells + wrapped actions)
 
 ## Amazon order import + categorization (plan)
 - [x] Target amazon.ca order history pages (support URLs like `/your-orders/orders?...` and `/gp/your-account/order-history`)

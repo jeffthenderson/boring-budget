@@ -7,8 +7,9 @@ import { Button } from '../components/Button'
 import { formatCurrency, parseCurrency } from '@/lib/utils/currency'
 import { formatDateDisplay } from '@/lib/utils/dates'
 import Link from 'next/link'
+import { TopNav } from '../components/TopNav'
 
-const RECURRING_CATEGORIES = ['Recurring - Essential', 'Recurring - Non-Essential']
+const RECURRING_CATEGORIES = ['Recurring - Essential', 'Recurring - Non-Essential', 'Income']
 
 interface RecurringSuggestion {
   key: string
@@ -111,7 +112,7 @@ export default function RecurringPage() {
             category: categoryChoice,
             nominalAmount: amountValue,
             frequency: 'monthly',
-            schedulingRule: JSON.stringify({ dayOfMonth }),
+            schedulingRule: JSON.stringify({ type: 'monthly', dayOfMonth }),
           }),
         }),
         fetch('/api/recurring/suggestions', {
@@ -177,7 +178,7 @@ export default function RecurringPage() {
     try {
       const rule = JSON.parse(def.schedulingRule)
       setDayOfMonth(rule.dayOfMonth?.toString() || '1')
-      setDayOfWeek(rule.dayOfWeek?.toString() || '1')
+      setDayOfWeek((rule.weekday ?? rule.dayOfWeek)?.toString() || '1')
       setFirstDay(rule.firstDay?.toString() || '1')
       setSecondDay(rule.secondDay?.toString() || '15')
     } catch {
@@ -202,16 +203,20 @@ export default function RecurringPage() {
     let schedulingRule: any = {}
     switch (frequency) {
       case 'monthly':
-        schedulingRule = { dayOfMonth: parseInt(dayOfMonth) }
+        schedulingRule = { type: 'monthly', dayOfMonth: parseInt(dayOfMonth) }
         break
       case 'weekly':
-        schedulingRule = { dayOfWeek: parseInt(dayOfWeek) }
+        schedulingRule = { type: 'weekly', weekday: parseInt(dayOfWeek) }
         break
       case 'biweekly':
-        schedulingRule = { dayOfWeek: parseInt(dayOfWeek) }
+        schedulingRule = {
+          type: 'biweekly',
+          weekday: parseInt(dayOfWeek),
+          anchorDate: new Date().toISOString().split('T')[0],
+        }
         break
       case 'twice_monthly':
-        schedulingRule = { firstDay: parseInt(firstDay), secondDay: parseInt(secondDay) }
+        schedulingRule = { type: 'twice_monthly', firstDay: parseInt(firstDay), secondDay: parseInt(secondDay) }
         break
     }
 
@@ -310,14 +315,15 @@ export default function RecurringPage() {
   }
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-screen p-4 md:p-8">
+      <TopNav />
       <header className="mb-8">
         <Link href="/" className="text-dark hover:underline text-sm">← BACK TO BUDGET</Link>
         <h1 className="text-2xl uppercase tracking-widest font-medium text-dark mt-4 mb-2">
           Recurring Definitions
         </h1>
         <p className="text-sm text-monday-3pm">
-          Manage recurring expenses. They'll appear automatically. (Whether you like it or not.)
+            Manage recurring schedules (expenses + income). They'll appear automatically. (Whether you like it or not.)
         </p>
       </header>
 
@@ -341,7 +347,7 @@ export default function RecurringPage() {
         </Card>
 
         <Card title="Recurring Suggestions">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-monday-3pm">
               Monthly candidates detected from your imported transactions.
             </p>
@@ -374,7 +380,7 @@ export default function RecurringPage() {
                         key={suggestion.key}
                         className="border-2 border-cubicle-taupe bg-white p-4 space-y-3"
                       >
-                      <div className="flex items-start justify-between gap-4">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                           <div className="font-medium">{suggestion.displayDescription}</div>
                           {suggestion.matchDescription !== suggestion.displayDescription && (
@@ -391,7 +397,7 @@ export default function RecurringPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4 text-sm text-monday-3pm">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-monday-3pm">
                         <div>
                           Amount range: {formatCurrency(suggestion.amountMin)} – {formatCurrency(suggestion.amountMax)}
                         </div>
@@ -404,7 +410,7 @@ export default function RecurringPage() {
                         Seen on: {suggestion.months.map(m => formatDateDisplay(m.date)).join(', ')}
                       </div>
 
-                      <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 items-center">
+                      <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr] gap-4 items-center">
                         <div>
                           <label className="text-xs uppercase tracking-wider text-dark font-medium">
                             Category
@@ -486,7 +492,7 @@ export default function RecurringPage() {
                         {expandedSuggestions.has(suggestion.key) && (
                           <div className="mt-2 border-t border-cubicle-taupe pt-3 space-y-2 text-sm">
                             {suggestion.occurrences.map((occurrence, index) => (
-                              <div key={`${suggestion.key}-${index}`} className="flex justify-between">
+                              <div key={`${suggestion.key}-${index}`} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                                 <div>{formatDateDisplay(occurrence.date)}</div>
                                 <div>{formatCurrency(occurrence.amount)}</div>
                                 <div className="text-monday-3pm">
@@ -569,7 +575,7 @@ export default function RecurringPage() {
                   key={def.id}
                   className="border-b border-cubicle-taupe last:border-b-0 py-3"
                 >
-                  <div className="grid grid-cols-[2fr_1fr_1fr_auto_auto_auto_auto] gap-4 items-center">
+                  <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-4 items-start md:items-center">
                     <div>
                       <div className="font-medium">{def.displayLabel || def.merchantLabel}</div>
                       {(def.displayLabel && def.displayLabel !== def.merchantLabel) && (
@@ -584,31 +590,33 @@ export default function RecurringPage() {
                         {def.active ? 'Active' : 'Inactive'}
                       </span>
                     </div>
-                    <Button
-                      variant="secondary"
-                      onClick={() => startEdit(def)}
-                      disabled={savingDefinitionIds.has(def.id) || savingForm}
-                    >
-                      EDIT
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() => toggleActive(def.id, def.active)}
-                      disabled={savingDefinitionIds.has(def.id) || savingForm}
-                    >
-                      {savingDefinitionIds.has(def.id)
-                        ? 'UPDATING...'
-                        : def.active
-                          ? 'DEACTIVATE'
-                          : 'ACTIVATE'}
-                    </Button>
-                    <Button
-                      variant="danger"
-                      onClick={() => handleDelete(def.id)}
-                      disabled={savingDefinitionIds.has(def.id) || savingForm}
-                    >
-                      {savingDefinitionIds.has(def.id) ? 'DELETING...' : 'DELETE'}
-                    </Button>
+                    <div className="flex flex-wrap gap-2 md:justify-end">
+                      <Button
+                        variant="secondary"
+                        onClick={() => startEdit(def)}
+                        disabled={savingDefinitionIds.has(def.id) || savingForm}
+                      >
+                        EDIT
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => toggleActive(def.id, def.active)}
+                        disabled={savingDefinitionIds.has(def.id) || savingForm}
+                      >
+                        {savingDefinitionIds.has(def.id)
+                          ? 'UPDATING...'
+                          : def.active
+                            ? 'DEACTIVATE'
+                            : 'ACTIVATE'}
+                      </Button>
+                      <Button
+                        variant="danger"
+                        onClick={() => handleDelete(def.id)}
+                        disabled={savingDefinitionIds.has(def.id) || savingForm}
+                      >
+                        {savingDefinitionIds.has(def.id) ? 'DELETING...' : 'DELETE'}
+                      </Button>
+                    </div>
                   </div>
 
                   {editingId === def.id && (
@@ -787,7 +795,7 @@ function renderRecurringFields({
       )}
 
       {frequency === 'twice_monthly' && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
             label="First Day"
             type="number"

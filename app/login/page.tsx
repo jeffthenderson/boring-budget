@@ -39,7 +39,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-screen p-4 md:p-8">
       <Card title="Login">
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input

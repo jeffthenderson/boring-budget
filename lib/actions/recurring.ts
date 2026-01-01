@@ -4,11 +4,11 @@ import { prisma } from '@/lib/db'
 import { getOrCreateUser } from './user'
 import { revalidatePath } from 'next/cache'
 import { normalizeDescription, buildCompositeDescription } from '@/lib/utils/import/normalizer'
+import { getExpenseAmount } from '@/lib/utils/transaction-amounts'
 import {
   getBestRecurringMatch,
   matchAgainstDefinitions,
   type ProjectedTransaction,
-  type RecurringDefinition as MatcherDefinition,
 } from '@/lib/utils/import/recurring-matcher'
 import { getProjectedDates, parseSchedulingRule, type SchedulingRule } from '@/lib/utils/scheduling'
 
@@ -169,15 +169,32 @@ async function generateProjectedTransactionsForDefinition(
   const dates = getProjectedDates(rule, year, month)
 
   const description = definition.displayLabel || definition.merchantLabel
+  const amount = definition.category === 'Income'
+    ? -Math.abs(definition.nominalAmount)
+    : definition.nominalAmount
+
+  const existing = await prisma.transaction.findMany({
+    where: {
+      periodId,
+      recurringDefinitionId: definitionId,
+      status: 'projected',
+      source: 'recurring',
+    },
+    select: { date: true },
+  })
+
+  const existingDates = new Set(existing.map(tx => tx.date.toISOString().split('T')[0]))
 
   for (const date of dates) {
+    const dateKey = date.toISOString().split('T')[0]
+    if (existingDates.has(dateKey)) continue
     await prisma.transaction.create({
       data: {
         periodId,
         recurringDefinitionId: definitionId,
         date,
         description,
-        amount: definition.nominalAmount,
+        amount,
         category: definition.category,
         status: 'projected',
         source: 'recurring',
@@ -230,14 +247,12 @@ export async function matchExistingImportsForPeriod(
     return { matched: 0 }
   }
 
-  const matcherDefinitions: MatcherDefinition[] = filteredDefinitions.map(def => ({
-    id: def.id,
-    merchantLabel: def.merchantLabel,
-    nominalAmount: def.nominalAmount,
-    category: def.category,
-  }))
+  const incomeDefinitions = filteredDefinitions.filter(def => def.category === 'Income')
+  const expenseDefinitions = filteredDefinitions.filter(def => def.category !== 'Income')
 
   const definitionsById = new Map(filteredDefinitions.map(def => [def.id, def]))
+  const incomeDefinitionIds = new Set(incomeDefinitions.map(def => def.id))
+  const expenseDefinitionIds = new Set(expenseDefinitions.map(def => def.id))
 
   const projectedTransactions: ProjectedTransaction[] = period.transactions
     .filter(tx => tx.status === 'projected' && tx.source === 'recurring' && tx.recurringDefinitionId)
@@ -250,6 +265,9 @@ export async function matchExistingImportsForPeriod(
       description: tx.description,
     }))
 
+  const projectedIncome = projectedTransactions.filter(tx => incomeDefinitionIds.has(tx.recurringDefinitionId))
+  const projectedExpenses = projectedTransactions.filter(tx => expenseDefinitionIds.has(tx.recurringDefinitionId))
+
   const importTransactions = period.transactions.filter(tx => (
     tx.source === 'import'
     && !tx.recurringDefinitionId
@@ -260,13 +278,13 @@ export async function matchExistingImportsForPeriod(
   let matched = 0
 
   for (const transaction of importTransactions) {
-    const accountType = transaction.importBatch?.account?.type
-    if (!accountType) continue
+    const expenseAmount = getExpenseAmount(transaction)
+    const isIncome = expenseAmount < 0 && transaction.importBatch?.account?.type === 'bank'
+    if (expenseAmount === 0) continue
 
-    const expenseAmount = accountType === 'credit_card'
-      ? transaction.amount
-      : -transaction.amount
-    if (expenseAmount <= 0) continue
+    const definitionsForMatch = isIncome ? incomeDefinitions : expenseDefinitions
+    if (definitionsForMatch.length === 0) continue
+    const projectedForMatch = isIncome ? projectedIncome : projectedExpenses
 
     const rawDescription = (transaction.description || '').trim()
     const compositeDescription = buildCompositeDescription(
@@ -279,14 +297,14 @@ export async function matchExistingImportsForPeriod(
     const importedRow = {
       id: transaction.id,
       parsedDate: transaction.date,
-      normalizedAmount: expenseAmount,
+      normalizedAmount: isIncome ? -Math.abs(expenseAmount) : expenseAmount,
       normalizedDescription: normalized,
       parsedDescription: rawDescription,
     }
 
-    let match = getBestRecurringMatch(importedRow, projectedTransactions, matcherDefinitions)
-    if (!match) {
-      match = matchAgainstDefinitions(importedRow, matcherDefinitions, period.year, period.month)
+    let match = getBestRecurringMatch(importedRow, projectedForMatch, definitionsForMatch)
+    if (!match && !isIncome) {
+      match = matchAgainstDefinitions(importedRow, definitionsForMatch, period.year, period.month)
     }
     if (!match) continue
 

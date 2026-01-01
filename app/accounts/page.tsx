@@ -5,6 +5,7 @@ import { Card } from '../components/Card'
 import { Input } from '../components/Input'
 import { Button } from '../components/Button'
 import Link from 'next/link'
+import { TopNav } from '../components/TopNav'
 
 interface Account {
   id: string
@@ -74,9 +75,9 @@ export default function AccountsPage() {
   }
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-screen p-4 md:p-8">
+      <TopNav />
       <header className="mb-8">
-        <Link href="/" className="text-dark hover:underline text-sm">← BACK TO BUDGET</Link>
         <h1 className="text-2xl uppercase tracking-widest font-medium text-dark mt-4 mb-2">
           Account Management
         </h1>
@@ -145,7 +146,7 @@ export default function AccountsPage() {
               {accounts.map((account) => (
                 <div
                   key={account.id}
-                  className="grid grid-cols-[2fr_1fr_1fr_auto_auto_auto] gap-4 items-center py-3 border-b border-cubicle-taupe last:border-b-0"
+                  className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-3 items-start md:items-center py-3 border-b border-cubicle-taupe last:border-b-0"
                 >
                   <div>
                     <div className="font-medium">{account.name}</div>
@@ -162,23 +163,25 @@ export default function AccountsPage() {
                       {account.active ? 'Active' : 'Inactive'}
                     </span>
                   </div>
-                  <Link href={`/import?account=${account.id}`}>
-                    <Button variant="secondary">
-                      IMPORT CSV
+                  <div className="flex flex-wrap gap-2 md:justify-end">
+                    <Link href={`/import?account=${account.id}`}>
+                      <Button variant="secondary">
+                        IMPORT CSV
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="secondary"
+                      onClick={() => toggleActive(account.id, account.active)}
+                    >
+                      {account.active ? 'DEACTIVATE' : 'ACTIVATE'}
                     </Button>
-                  </Link>
-                  <Button
-                    variant="secondary"
-                    onClick={() => toggleActive(account.id, account.active)}
-                  >
-                    {account.active ? 'DEACTIVATE' : 'ACTIVATE'}
-                  </Button>
-                  <Button
-                    variant="danger"
-                    onClick={() => handleDelete(account.id)}
-                  >
-                    DELETE
-                  </Button>
+                    <Button
+                      variant="danger"
+                      onClick={() => handleDelete(account.id)}
+                    >
+                      DELETE
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>

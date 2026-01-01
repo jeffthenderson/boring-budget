@@ -3,9 +3,70 @@
 import { prisma } from '@/lib/db'
 import { getOrCreateUser } from './user'
 import { revalidatePath } from 'next/cache'
-import { CATEGORIES, RECURRING_CATEGORIES } from '@/lib/constants/categories'
+import { BUDGET_CATEGORIES, RECURRING_CATEGORIES, isIncomeCategory } from '@/lib/constants/categories'
 import { roundCurrency } from '@/lib/utils/currency'
 import { generateProjectedTransactions } from './recurring'
+import { getExpenseAmount } from '@/lib/utils/transaction-amounts'
+
+const PERIOD_INCLUDE = {
+  incomeItems: true,
+  categoryBudgets: true,
+  user: {
+    include: {
+      recurringDefinitions: {
+        where: { active: true },
+      },
+    },
+  },
+  transactions: {
+    include: {
+      recurringDefinition: true,
+      importBatch: {
+        include: { account: true },
+      },
+      amazonOrderTransactions: {
+        include: {
+          order: {
+            include: {
+              items: true,
+              _count: { select: { amazonOrderTransactions: true } },
+            },
+          },
+        },
+      },
+      linksFrom: {
+        include: {
+          toTransaction: {
+            select: {
+              id: true,
+              description: true,
+              subDescription: true,
+              amount: true,
+              date: true,
+              category: true,
+              status: true,
+            },
+          },
+        },
+      },
+      linksTo: {
+        include: {
+          fromTransaction: {
+            select: {
+              id: true,
+              description: true,
+              subDescription: true,
+              amount: true,
+              date: true,
+              category: true,
+              status: true,
+            },
+          },
+        },
+      },
+    },
+  },
+} as const
 
 function isUniqueConstraintError(error: unknown): boolean {
   return Boolean(
@@ -31,39 +92,21 @@ export async function getCurrentOrCreatePeriod(year?: number, month?: number) {
         month: targetMonth,
       },
     },
-    include: {
-      incomeItems: true,
-      categoryBudgets: true,
-      user: {
-        include: {
-          recurringDefinitions: {
-            where: { active: true },
-          },
-        },
-      },
-      transactions: {
-        include: {
-          recurringDefinition: true,
-          importBatch: {
-            include: { account: true },
-          },
-          amazonOrderTransactions: {
-            include: {
-              order: {
-                include: {
-                  items: true,
-                  _count: { select: { amazonOrderTransactions: true } },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
+    include: PERIOD_INCLUDE,
   })
 
   if (!period) {
     period = await createPeriod(targetYear, targetMonth)
+  } else {
+    const nowIndex = now.getFullYear() * 12 + now.getMonth()
+    const periodIndex = targetYear * 12 + (targetMonth - 1)
+    if (period.status === 'open' && periodIndex >= nowIndex) {
+      await generateProjectedTransactions(period.id, targetYear, targetMonth)
+      period = await prisma.budgetPeriod.findUnique({
+        where: { id: period.id },
+        include: PERIOD_INCLUDE,
+      })
+    }
   }
 
   return period
@@ -80,45 +123,21 @@ export async function createPeriod(year: number, month: number) {
         month,
         status: 'open',
         categoryBudgets: {
-          create: CATEGORIES.map(category => ({
+          create: BUDGET_CATEGORIES.map(category => ({
             category,
             amountBudgeted: 0,
           })),
         },
       },
-      include: {
-        incomeItems: true,
-        categoryBudgets: true,
-        user: {
-          include: {
-            recurringDefinitions: {
-              where: { active: true },
-            },
-          },
-        },
-        transactions: {
-          include: {
-            recurringDefinition: true,
-            importBatch: {
-              include: { account: true },
-            },
-            amazonOrderTransactions: {
-              include: {
-                order: {
-                  include: {
-                    items: true,
-                    _count: { select: { amazonOrderTransactions: true } },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
+      include: PERIOD_INCLUDE,
     })
 
     await generateProjectedTransactions(period.id, year, month)
-    return period
+    const refreshed = await prisma.budgetPeriod.findUnique({
+      where: { id: period.id },
+      include: PERIOD_INCLUDE,
+    })
+    return refreshed || period
   } catch (error) {
     if (isUniqueConstraintError(error)) {
       const existing = await prisma.budgetPeriod.findUnique({
@@ -129,38 +148,21 @@ export async function createPeriod(year: number, month: number) {
             month,
           },
         },
-        include: {
-          incomeItems: true,
-          categoryBudgets: true,
-          user: {
-            include: {
-              recurringDefinitions: {
-                where: { active: true },
-              },
-            },
-          },
-          transactions: {
-            include: {
-              recurringDefinition: true,
-              importBatch: {
-                include: { account: true },
-              },
-              amazonOrderTransactions: {
-                include: {
-                  order: {
-                    include: {
-                      items: true,
-                      _count: { select: { amazonOrderTransactions: true } },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
+        include: PERIOD_INCLUDE,
       })
 
       if (existing) {
+        const now = new Date()
+        const nowIndex = now.getFullYear() * 12 + now.getMonth()
+        const existingIndex = year * 12 + (month - 1)
+        if (existing.status === 'open' && existingIndex >= nowIndex) {
+          await generateProjectedTransactions(existing.id, year, month)
+          const refreshed = await prisma.budgetPeriod.findUnique({
+            where: { id: existing.id },
+            include: PERIOD_INCLUDE,
+          })
+          return refreshed || existing
+        }
         return existing
       }
     }
@@ -279,12 +281,12 @@ export async function suggestCategoryBudgets(
   })
 
   const totalsByCategory = new Map<string, number>()
-  for (const category of CATEGORIES) {
+  for (const category of BUDGET_CATEGORIES) {
     totalsByCategory.set(category, 0)
   }
 
   for (const transaction of historyTransactions) {
-    if (transaction.category === 'Uncategorized') continue
+    if (transaction.category === 'Uncategorized' || isIncomeCategory(transaction.category)) continue
     const expense = getExpenseAmount(transaction)
     if (expense <= 0) continue
     totalsByCategory.set(
@@ -296,7 +298,7 @@ export async function suggestCategoryBudgets(
   const monthsUsed = priorPeriods.length
   const suggestedBudgets = new Map<string, number>()
 
-  for (const category of CATEGORIES) {
+  for (const category of BUDGET_CATEGORIES) {
     const total = totalsByCategory.get(category) || 0
     const average = roundCurrency(total / monthsUsed)
     if (average > 0) {
@@ -367,17 +369,4 @@ export async function suggestCategoryBudgets(
     monthsUsed,
     budgets: Object.fromEntries(suggestedBudgets),
   }
-}
-
-function getExpenseAmount(transaction: {
-  amount: number
-  source: string
-  importBatch?: { account?: { type?: string } | null } | null
-}) {
-  if (transaction.source === 'import') {
-    const accountType = transaction.importBatch?.account?.type
-    if (accountType === 'bank') return -transaction.amount
-    if (accountType === 'credit_card') return transaction.amount
-  }
-  return transaction.amount
 }

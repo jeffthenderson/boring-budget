@@ -18,7 +18,7 @@ export function Button({
   const variantStyles = {
     primary: 'border-dark bg-white text-dark hover:bg-ceiling-grey',
     secondary: 'border-cubicle-taupe bg-white text-dark hover:bg-background',
-    danger: 'border-dark bg-white text-dark hover:bg-monday-3pm hover:text-white',
+    danger: 'border-red-700 bg-white text-red-700 hover:bg-red-50',
     outline: 'border-dark bg-white text-dark hover:bg-background',
   }
 

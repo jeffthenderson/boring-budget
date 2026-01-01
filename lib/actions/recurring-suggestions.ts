@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { getOrCreateUser } from './user'
 import { normalizeDescription, buildCompositeDescription } from '@/lib/utils/import/normalizer'
 import { roundCurrency } from '@/lib/utils/currency'
+import { getExpenseAmount } from '@/lib/utils/transaction-amounts'
 
 interface SuggestionOccurrence {
   date: Date
@@ -69,9 +70,6 @@ export async function getRecurringSuggestions(): Promise<RecurringSuggestion[]> 
   const grouped = new Map<string, SuggestionOccurrence[]>()
 
   for (const tx of transactions) {
-    const accountType = tx.importBatch?.account?.type
-    if (!accountType) continue
-
     const rawDescription = (tx.description || '').trim()
     const subDescription = (tx.subDescription || '').trim()
     const compositeDescription = buildCompositeDescription(rawDescription, subDescription)
@@ -79,7 +77,7 @@ export async function getRecurringSuggestions(): Promise<RecurringSuggestion[]> 
     const normalized = normalizeDescription(compositeDescription)
     if (!normalized) continue
 
-    const expenseAmount = accountType === 'credit_card' ? tx.amount : -tx.amount
+    const expenseAmount = getExpenseAmount(tx)
     if (expenseAmount <= 0) continue
 
     const amount = roundCurrency(Math.abs(expenseAmount))

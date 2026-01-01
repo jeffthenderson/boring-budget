@@ -3,7 +3,8 @@
 import { prisma } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 import { getOrCreateUser } from './user'
-import { CATEGORIES, isRecurringCategory } from '@/lib/constants/categories'
+import { TRANSACTION_CATEGORIES, isRecurringCategory } from '@/lib/constants/categories'
+import { getExpenseAmount } from '@/lib/utils/transaction-amounts'
 
 type LLMCategoryResult = {
   id: string
@@ -11,7 +12,9 @@ type LLMCategoryResult = {
   confidence?: number
 }
 
-const ALLOWED_CATEGORIES = CATEGORIES.filter(cat => !isRecurringCategory(cat))
+const ALLOWED_CATEGORIES = TRANSACTION_CATEGORIES.filter(
+  cat => !isRecurringCategory(cat) && cat !== 'Uncategorized'
+)
 type AllowedCategory = (typeof ALLOWED_CATEGORIES)[number]
 
 type CategorizeScope = 'period' | 'all'
@@ -85,6 +88,7 @@ type TransactionWithAccount = {
   importBatch?: {
     account?: {
       type?: string
+      invertAmounts?: boolean | null
     } | null
   } | null
   periodId: string
@@ -103,15 +107,6 @@ function normalizeDescriptor(value: string | null | undefined) {
 
 function buildDescriptorKey(description: string | null | undefined, subDescription: string | null | undefined) {
   return `${normalizeDescriptor(description)}||${normalizeDescriptor(subDescription)}`
-}
-
-function getExpenseAmount(tx: TransactionWithAccount) {
-  const accountType = tx.importBatch?.account?.type
-  if (tx.source === 'import') {
-    if (accountType === 'credit_card') return tx.amount
-    if (accountType === 'bank') return -tx.amount
-  }
-  return tx.amount
 }
 
 function isWithinLookback(dateText: string, referenceDate: Date) {
@@ -380,6 +375,7 @@ export async function categorizeTransactionsWithLLM(
     'Items can be transactions or Amazon orders.',
     'Use historyMatches (exact description/sub-description matches with past categorized transactions) as a strong signal.',
     'For Amazon orders, use item names plus linked transaction descriptions.',
+    'Use Income only for clear inflows like payroll, salary, or deposit-type transactions.',
     'Return JSON only: an array of objects with { "id", "category", "confidence" }.',
     'confidence is a number from 0 to 1.',
     'If unsure, keep confidence below 0.6.',
@@ -400,6 +396,23 @@ export async function categorizeTransactionsWithLLM(
           transactions: [
             { date: '2025-03-04', amount: 54.2, category: 'Grocery', note: 'weekly groceries' },
             { date: '2025-04-10', amount: 63.45, category: 'Grocery', note: null },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'example_tx_2',
+      type: 'transaction',
+      description: 'PAYROLL',
+      subDescription: 'ACME INC',
+      amount: 2450,
+      date: '2025-05-15',
+      historyMatches: [
+        {
+          description: 'PAYROLL',
+          subDescription: 'ACME INC',
+          transactions: [
+            { date: '2025-04-30', amount: 2450, category: 'Income', note: 'paycheck' },
           ],
         },
       ],
@@ -427,6 +440,7 @@ export async function categorizeTransactionsWithLLM(
 
   const exampleOutput = [
     { id: 'example_tx_1', category: 'Grocery', confidence: 0.88 },
+    { id: 'example_tx_2', category: 'Income', confidence: 0.91 },
     { id: 'example_amz_1', category: 'Other - Responsible', confidence: 0.64 },
   ]
 

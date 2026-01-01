@@ -117,6 +117,8 @@ model Transaction {
   amazonOrderTransactions AmazonOrderTransaction[]
   externalId              String?
   sourceImportHash        String?
+  linksFrom               TransactionLink[]     @relation("TransactionLinkFrom")
+  linksTo                 TransactionLink[]     @relation("TransactionLinkTo")
   createdAt               DateTime              @default(now())
   updatedAt               DateTime              @updatedAt
   transferGroupLeft       TransferGroup?        @relation("LeftTransaction")
@@ -132,10 +134,27 @@ model Account {
   displayAlias    String?
   last4           String?
   active          Boolean        @default(true)
+  invertAmounts   Boolean        @default(false)
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   importBatches   ImportBatch[]
   rawImportRows   RawImportRow[]
+}
+
+model TransactionLink {
+  id                String       @id @default(cuid())
+  type              String       // "refund" | "reimbursement"
+  fromTransactionId String
+  fromTransaction   Transaction  @relation("TransactionLinkFrom", fields: [fromTransactionId], references: [id], onDelete: Cascade)
+  toTransactionId   String
+  toTransaction     Transaction  @relation("TransactionLinkTo", fields: [toTransactionId], references: [id], onDelete: Cascade)
+  amount            Float
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@unique([type, fromTransactionId, toTransactionId])
+  @@index([fromTransactionId])
+  @@index([toTransactionId])
 }
 
 model ImportBatch {

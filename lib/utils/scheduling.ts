@@ -29,11 +29,52 @@ export type SchedulingRule =
   | TwiceMonthlySchedule
 
 export function parseSchedulingRule(json: string): SchedulingRule {
-  return JSON.parse(json) as SchedulingRule
+  const raw = JSON.parse(json) as any
+  return normalizeSchedulingRule(raw)
 }
 
 export function serializeSchedulingRule(rule: SchedulingRule): string {
   return JSON.stringify(rule)
+}
+
+function normalizeSchedulingRule(rule: any): SchedulingRule {
+  if (rule?.type) {
+    return rule as SchedulingRule
+  }
+
+  if (rule?.firstDay || rule?.secondDay) {
+    return {
+      type: 'twice_monthly',
+      firstDay: Number(rule.firstDay ?? 1),
+      secondDay: Number(rule.secondDay ?? 15),
+      nearestBusinessDay: Boolean(rule.nearestBusinessDay),
+    }
+  }
+
+  if (rule?.dayOfMonth !== undefined) {
+    return {
+      type: 'monthly',
+      dayOfMonth: Number(rule.dayOfMonth ?? 1),
+      nearestBusinessDay: Boolean(rule.nearestBusinessDay),
+    }
+  }
+
+  if (rule?.anchorDate) {
+    return {
+      type: 'biweekly',
+      anchorDate: rule.anchorDate,
+      weekday: Number(rule.weekday ?? rule.dayOfWeek ?? 1),
+    }
+  }
+
+  if (rule?.dayOfWeek !== undefined || rule?.weekday !== undefined) {
+    return {
+      type: 'weekly',
+      weekday: Number(rule.weekday ?? rule.dayOfWeek ?? 1),
+    }
+  }
+
+  return { type: 'monthly', dayOfMonth: 1 }
 }
 
 export function getProjectedDates(

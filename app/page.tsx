@@ -1,7 +1,7 @@
 import { getCurrentOrCreatePeriod } from '@/lib/actions/period'
 import { getPreallocationSettings } from '@/lib/actions/user'
 import { BudgetDashboard } from './components/BudgetDashboard'
-import Link from 'next/link'
+import { TopNav } from './components/TopNav'
 
 export default async function Home({
   searchParams,
@@ -24,7 +24,8 @@ export default async function Home({
   const settings = await getPreallocationSettings()
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-screen p-4 md:p-8">
+      <TopNav showBrand={false} />
       <header className="mb-8 border-b-4 border-dark pb-4">
         <h1 className="text-2xl uppercase tracking-widest font-medium text-dark mb-2">
           Boring Budget
@@ -32,14 +33,6 @@ export default async function Home({
         <p className="text-sm text-monday-3pm">
           Budget like nobody's watching. (They're not.)
         </p>
-        <nav className="mt-4 flex gap-4 text-sm">
-          <Link href="/" className="text-dark hover:underline">BUDGET</Link>
-          <Link href="/recurring" className="text-dark hover:underline">RECURRING</Link>
-          <Link href="/accounts" className="text-dark hover:underline">ACCOUNTS</Link>
-          <Link href="/amazon" className="text-dark hover:underline">AMAZON</Link>
-          <Link href="/settings" className="text-dark hover:underline">SETTINGS</Link>
-          <Link href="/admin" className="text-dark hover:underline">ADMIN</Link>
-        </nav>
       </header>
 
       <BudgetDashboard period={period} settings={settings} />
