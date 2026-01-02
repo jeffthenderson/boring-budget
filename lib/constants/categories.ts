@@ -30,20 +30,20 @@ export function isRecurringCategory(category: string): boolean {
 }
 
 export const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
-  'Recurring - Essential': { bg: 'bg-red-100', text: 'text-red-800' },
-  'Recurring - Non-Essential': { bg: 'bg-orange-100', text: 'text-orange-800' },
-  'Auto': { bg: 'bg-blue-100', text: 'text-blue-800' },
-  'Grocery': { bg: 'bg-green-100', text: 'text-green-800' },
-  'Dining': { bg: 'bg-purple-100', text: 'text-purple-800' },
-  'Entertainment': { bg: 'bg-pink-100', text: 'text-pink-800' },
-  'Other - Fun': { bg: 'bg-yellow-100', text: 'text-yellow-800' },
-  'Other - Responsible': { bg: 'bg-cyan-100', text: 'text-cyan-800' },
-  'Income': { bg: 'bg-emerald-100', text: 'text-emerald-800' },
-  'Uncategorized': { bg: 'bg-gray-100', text: 'text-gray-800' },
+  'Recurring - Essential': { bg: 'bg-rose-100', text: 'text-rose-800' },
+  'Recurring - Non-Essential': { bg: 'bg-amber-100', text: 'text-amber-800' },
+  'Auto': { bg: 'bg-sky-100', text: 'text-sky-800' },
+  'Grocery': { bg: 'bg-emerald-100', text: 'text-emerald-800' },
+  'Dining': { bg: 'bg-orange-100', text: 'text-orange-800' },
+  'Entertainment': { bg: 'bg-blue-100', text: 'text-blue-800' },
+  'Other - Fun': { bg: 'bg-lime-100', text: 'text-lime-800' },
+  'Other - Responsible': { bg: 'bg-teal-100', text: 'text-teal-800' },
+  'Income': { bg: 'bg-cyan-100', text: 'text-cyan-800' },
+  'Uncategorized': { bg: 'bg-slate-100', text: 'text-slate-700' },
 }
 
 export function getCategoryColor(category: string): { bg: string; text: string } {
-  return CATEGORY_COLORS[category] || { bg: 'bg-gray-100', text: 'text-gray-800' }
+  return CATEGORY_COLORS[category] || { bg: 'bg-slate-100', text: 'text-slate-700' }
 }
 
 export function isIncomeCategory(category: string): boolean {

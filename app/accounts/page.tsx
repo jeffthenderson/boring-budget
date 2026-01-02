@@ -75,27 +75,27 @@ export default function AccountsPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-8">
+    <div className="min-h-screen max-w-6xl mx-auto p-4 md:p-8">
       <TopNav />
       <header className="mb-8">
-        <h1 className="text-2xl uppercase tracking-widest font-medium text-dark mt-4 mb-2">
-          Account Management
+        <h1 className="text-2xl font-semibold text-foreground mt-4 mb-2">
+          Accounts
         </h1>
         <p className="text-sm text-monday-3pm">
-          Configure accounts for CSV imports. (How organized of you.)
+          Configure accounts for CSV imports. Calmly organized.
         </p>
       </header>
 
       <div className="space-y-6">
         <Card>
           <Button onClick={() => setShowForm(!showForm)}>
-            {showForm ? 'CANCEL' : 'ADD ACCOUNT'}
+            {showForm ? 'Cancel' : 'Add account'}
           </Button>
 
           {showForm && (
-            <form onSubmit={handleSubmit} className="mt-4 space-y-4 border-t-2 border-cubicle-taupe pt-4">
+            <form onSubmit={handleSubmit} className="mt-4 space-y-4 border-t border-line pt-4">
               <Input
-                label="Account Name"
+                label="Account name"
                 value={name}
                 onChange={setName}
                 placeholder="Powerchequing, Scene Visa, etc."
@@ -103,50 +103,50 @@ export default function AccountsPage() {
               />
 
               <div className="flex flex-col gap-1">
-                <label className="text-xs uppercase tracking-wider text-dark font-medium">
-                  Account Type (REQUIRED)
+                <label className="mono-label">
+                  account type (required)
                 </label>
                 <select
                   value={type}
                   onChange={(e) => setType(e.target.value as 'credit_card' | 'bank')}
-                  className="border-2 border-cubicle-taupe bg-white px-3 py-2 text-dark focus:outline-none focus:border-dark"
+                  className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                 >
-                  <option value="bank">Bank Account</option>
-                  <option value="credit_card">Credit Card</option>
+                  <option value="bank">Bank account</option>
+                  <option value="credit_card">Credit card</option>
                 </select>
               </div>
 
               <Input
-                label="Display Alias (for transfer detection)"
+                label="Display alias (for transfer detection)"
                 value={displayAlias}
                 onChange={setDisplayAlias}
                 placeholder="e.g., 'chequing', 'visa'"
               />
 
               <Input
-                label="Last 4 Digits (optional, for matching)"
+                label="Last 4 digits (optional, for matching)"
                 value={last4}
                 onChange={setLast4}
                 placeholder="9084"
                 maxLength={4}
               />
 
-              <Button type="submit">CREATE ACCOUNT</Button>
+              <Button type="submit">Create account</Button>
             </form>
           )}
         </Card>
 
-        <Card title="Your Accounts">
+        <Card title="Your accounts">
           {accounts.length === 0 ? (
             <div className="text-center py-8 text-monday-3pm">
-              No accounts yet. Add one to start importing. (Eventually.)
+              No accounts yet. Add one to import.
             </div>
           ) : (
             <div className="space-y-2">
               {accounts.map((account) => (
                 <div
                   key={account.id}
-                  className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-3 items-start md:items-center py-3 border-b border-cubicle-taupe last:border-b-0"
+                  className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-3 items-start md:items-center py-3 border-b border-line last:border-b-0"
                 >
                   <div>
                     <div className="font-medium">{account.name}</div>
@@ -159,27 +159,27 @@ export default function AccountsPage() {
                     {account.displayAlias || '(no alias)'}
                   </div>
                   <div>
-                    <span className={`px-2 py-1 text-xs uppercase ${account.active ? 'bg-ceiling-grey' : 'bg-background'}`}>
+                    <span className="rounded-full bg-accent-soft px-2 py-1 mono-label">
                       {account.active ? 'Active' : 'Inactive'}
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-2 md:justify-end">
                     <Link href={`/import?account=${account.id}`}>
                       <Button variant="secondary">
-                        IMPORT CSV
+                        Import CSV
                       </Button>
                     </Link>
                     <Button
                       variant="secondary"
                       onClick={() => toggleActive(account.id, account.active)}
                     >
-                      {account.active ? 'DEACTIVATE' : 'ACTIVATE'}
+                      {account.active ? 'Deactivate' : 'Activate'}
                     </Button>
                     <Button
                       variant="danger"
                       onClick={() => handleDelete(account.id)}
                     >
-                      DELETE
+                      Delete
                     </Button>
                   </div>
                 </div>
@@ -188,8 +188,8 @@ export default function AccountsPage() {
           )}
         </Card>
 
-        <div className="p-4 border-2 border-cubicle-taupe bg-white">
-          <h3 className="text-sm uppercase font-medium mb-2">About CSV Imports</h3>
+        <div className="rounded-md border border-line bg-white p-4">
+          <h3 className="text-sm font-semibold text-foreground mb-2">About CSV imports</h3>
           <p className="text-sm text-monday-3pm mb-2">
             Upload CSV files from your bank or credit card to automatically import transactions.
           </p>

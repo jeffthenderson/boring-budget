@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Boring Budget - Vision 6: Ledger Ice</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+    :root {
+      --bg: #F6F8FB;
+      --paper: #FFFFFF;
+      --ink: #0E1620;
+      --muted: #5E6C7E;
+      --line: #DEE3EC;
+      --accent: #2563EB;
+      --accent-soft: #E7EEFF;
+      --ok: #22C55E;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(14, 22, 32, 0.04) 1px, transparent 1px) 0 0 / 24px 24px,
+        linear-gradient(0deg, rgba(14, 22, 32, 0.04) 1px, transparent 1px) 0 0 / 24px 24px,
+        var(--bg);
+      color: var(--ink);
+      font-family: 'IBM Plex Sans', sans-serif;
+    }
+
+    .frame {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 22px 62px;
+      animation: drop 200ms ease-out;
+    }
+
+    @keyframes drop {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border: 1px solid var(--line);
+      background: var(--paper);
+      border-radius: 16px;
+      padding: 14px 16px;
+    }
+
+    .brand {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .nav-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      border: 1px solid var(--line);
+      padding: 6px 10px;
+      border-radius: 9px;
+      color: var(--muted);
+      background: #FFFFFF;
+    }
+
+    .tab.active {
+      color: var(--ink);
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .hero {
+      margin: 22px 0 18px;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 16px;
+    }
+
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 24px;
+      margin: 0 0 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    p { margin: 0; color: var(--muted); line-height: 1.6; }
+
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: #FFFFFF;
+      cursor: pointer;
+      transition: transform 90ms ease, box-shadow 150ms ease;
+    }
+
+    .btn:active { transform: translateY(1px) scale(0.99); }
+
+    .btn.secondary {
+      background: #FFFFFF;
+      border-color: var(--line);
+      color: var(--ink);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin: 16px 0 20px;
+    }
+
+    .stat {
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: #FFFFFF;
+    }
+
+    .stat .label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+    }
+
+    .stat .value {
+      margin-top: 8px;
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .list {
+      border: 1px solid var(--line);
+      background: #FFFFFF;
+      border-radius: 16px;
+      padding: 14px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr 1fr auto;
+      gap: 12px;
+      padding: 12px 8px;
+      border-bottom: 1px solid var(--line);
+      align-items: center;
+    }
+
+    .row:last-child { border-bottom: none; }
+
+    .chip {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      padding: 4px 8px;
+      border-radius: 8px;
+      background: #F1F5F9;
+      color: var(--muted);
+    }
+
+    .chip.ok { background: rgba(34, 197, 94, 0.12); color: var(--ok); }
+
+    .form {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr auto;
+      gap: 10px;
+      margin-top: 14px;
+      align-items: end;
+    }
+
+    .input {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      font-size: 13px;
+    }
+
+    .note {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 10px;
+    }
+
+    .notice {
+      margin-top: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--accent-soft);
+      border: 1px solid var(--accent);
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 12px;
+    }
+
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; }
+      .grid { grid-template-columns: 1fr 1fr; }
+      .row { grid-template-columns: 1fr; }
+      .form { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <nav class="nav">
+      <div>
+        <div class="brand">Boring Budget</div>
+        <p>Icy blue, fast taps, warm receipts.</p>
+      </div>
+      <div class="nav-actions">
+        <div class="tab active">Budget</div>
+        <div class="tab">Recurring</div>
+        <div class="tab">Accounts</div>
+        <div class="tab">Import</div>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <div class="card">
+        <h1>boring. speed-first.</h1>
+        <p>Every click updates immediately. The server confirms later. If it fails, we quietly restore and move on.</p>
+        <div style="margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap;">
+          <button class="btn">Add recurring</button>
+          <button class="btn secondary">Undo</button>
+        </div>
+        <div class="notice">Saved. Do not be alarmed.</div>
+      </div>
+      <div class="card">
+        <div class="stat">
+          <div class="label">balance</div>
+          <div class="value">$2,402.17</div>
+        </div>
+        <div class="note">Sync status is private. Like your browsing history.</div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="stat">
+        <div class="label">remaining</div>
+        <div class="value">$912.00</div>
+      </div>
+      <div class="stat">
+        <div class="label">posted</div>
+        <div class="value">21</div>
+      </div>
+      <div class="stat">
+        <div class="label">projected</div>
+        <div class="value">7</div>
+      </div>
+      <div class="stat">
+        <div class="label">needs review</div>
+        <div class="value">3</div>
+      </div>
+    </section>
+
+    <section class="list">
+      <div class="row">
+        <div>
+          <strong>Rent</strong>
+          <div class="note">Recurring match</div>
+        </div>
+        <div>$1,700.00</div>
+        <div class="chip">projected</div>
+        <div><button class="btn secondary">Post</button></div>
+      </div>
+      <div class="row">
+        <div>
+          <strong>Groceries</strong>
+          <div class="note">Imported</div>
+        </div>
+        <div>$82.64</div>
+        <div class="chip ok">posted</div>
+        <div><button class="btn secondary">Edit</button></div>
+      </div>
+      <div class="row">
+        <div>
+          <strong>Transit</strong>
+          <div class="note">Manual entry</div>
+        </div>
+        <div>$44.00</div>
+        <div class="chip">pending</div>
+        <div><button class="btn">Save</button></div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top: 16px;">
+      <strong>Quick add</strong>
+      <div class="form">
+        <input class="input" value="Utilities" aria-label="description">
+        <input class="input" value="119.00" aria-label="amount">
+        <input class="input" value="Bills" aria-label="category">
+        <button class="btn">Add</button>
+      </div>
+      <div class="note">Instant update. Quiet confirmation later.</div>
+    </section>
+  </div>
+</body>
+</html>

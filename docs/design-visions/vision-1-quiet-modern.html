@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Boring Budget - Vision 1: Quiet Modern</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif:opsz,wght@8..144,500;700&display=swap');
+
+    :root {
+      --bg: #F7F8FB;
+      --paper: #FFFFFF;
+      --ink: #171A1F;
+      --muted: #6B7280;
+      --line: #E3E6EE;
+      --accent: #2563EB;
+      --accent-strong: #1E4FD9;
+      --accent-soft: #E6EDFF;
+      --good: #16A34A;
+      --warn: #D97706;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: 'Instrument Sans', 'Noto Sans', sans-serif;
+      color: var(--ink);
+      background: radial-gradient(120% 140% at 10% 0%, #FFFFFF 0%, #F7F8FB 42%, #F0F3F8 100%);
+      letter-spacing: 0.01em;
+    }
+
+    .page {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 32px 24px 56px;
+      animation: page-in 220ms ease-out;
+    }
+
+    @keyframes page-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 16px;
+    }
+
+    .brand {
+      font-family: 'Instrument Serif', serif;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    .tagline {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .pill {
+      border: 1px solid var(--line);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--paper);
+    }
+
+    .pill.active {
+      color: var(--ink);
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .hero {
+      margin: 28px 0 20px;
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1.2fr 1fr;
+    }
+
+    .hero h1 {
+      font-family: 'Instrument Serif', serif;
+      font-size: 36px;
+      margin: 0 0 12px;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .hero-card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(17, 24, 39, 0.04);
+    }
+
+    .button-row {
+      margin-top: 16px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: #FFFFFF;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: transform 90ms ease, background 150ms ease, box-shadow 150ms ease;
+    }
+
+    .btn:active { transform: translateY(1px) scale(0.99); }
+
+    .btn.secondary {
+      background: var(--paper);
+      color: var(--ink);
+      border-color: var(--line);
+    }
+
+    .btn.ghost {
+      background: transparent;
+      color: var(--muted);
+      border-color: transparent;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 10px;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 1.6s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 1; }
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin: 20px 0 28px;
+    }
+
+    .metric {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .metric .label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .metric .value {
+      font-size: 22px;
+      font-weight: 600;
+      margin-top: 6px;
+    }
+
+    .list {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .list-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr 1fr auto;
+      gap: 12px;
+      padding: 12px 8px;
+      border-bottom: 1px solid var(--line);
+      align-items: center;
+    }
+
+    .row:last-child { border-bottom: none; }
+
+    .chip {
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      background: var(--accent-soft);
+      color: var(--ink);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .chip.good { background: rgba(22, 163, 74, 0.12); color: var(--good); }
+    .chip.warn { background: rgba(217, 119, 6, 0.12); color: var(--warn); }
+
+    .side {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .panel {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    .toast {
+      margin-top: 16px;
+      background: var(--accent-soft);
+      color: var(--ink);
+      border: 1px solid var(--accent);
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; }
+      .grid { grid-template-columns: 1fr; }
+      .row { grid-template-columns: 1fr; }
+      .side { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <nav class="nav">
+      <div>
+        <div class="brand">Boring Budget</div>
+        <div class="tagline">Quietly unexciting finances.</div>
+      </div>
+      <div class="nav-links">
+        <div class="pill active">Budget</div>
+        <div class="pill">Recurring</div>
+        <div class="pill">Import</div>
+        <div class="pill">Settings</div>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <div>
+        <h1>Snappy. Calm. Unreasonably polite.</h1>
+        <p>We do the boring parts fast, so you can keep pretending this is thrilling. Every tap responds instantly. The server can catch up in private.</p>
+        <div class="button-row">
+          <button class="btn">Add transaction</button>
+          <button class="btn secondary">Import CSV</button>
+          <button class="btn ghost">Undo that</button>
+        </div>
+        <div class="status"><span class="dot"></span> Syncing quietly in the background.</div>
+      </div>
+      <div class="hero-card">
+        <div class="metric">
+          <div class="label">This month</div>
+          <div class="value">$4,218.17</div>
+          <div class="hint">On track. No celebration.</div>
+        </div>
+        <div class="button-row">
+          <button class="btn">Post recurring</button>
+          <button class="btn secondary">Review matches</button>
+        </div>
+        <div class="toast">Saved. Please remain calm.</div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="metric">
+        <div class="label">Remaining</div>
+        <div class="value">$812.02</div>
+      </div>
+      <div class="metric">
+        <div class="label">Projected</div>
+        <div class="value">$3,120.00</div>
+      </div>
+      <div class="metric">
+        <div class="label">Spent</div>
+        <div class="value">$1,286.15</div>
+      </div>
+    </section>
+
+    <section class="list">
+      <div class="list-header">
+        <strong>Latest activity</strong>
+        <span class="hint">Instant on tap. Server later.</span>
+      </div>
+      <div class="row">
+        <div>
+          <div>Metro Grocer</div>
+          <div class="hint">Food and groceries</div>
+        </div>
+        <div>$84.23</div>
+        <div class="chip good">posted</div>
+        <div class="button-row">
+          <button class="btn secondary">Edit</button>
+          <button class="btn ghost">Undo</button>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <div>Rent</div>
+          <div class="hint">Recurring match</div>
+        </div>
+        <div>$1,700.00</div>
+        <div class="chip">projected</div>
+        <div class="button-row">
+          <button class="btn">Post</button>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <div>Transit Card</div>
+          <div class="hint">Auto import</div>
+        </div>
+        <div>$44.00</div>
+        <div class="chip warn">needs review</div>
+        <div class="button-row">
+          <button class="btn secondary">Link</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="side">
+      <div class="panel">
+        <strong>Add recurring</strong>
+        <div class="hint">No waiting. We will sync after you blink.</div>
+        <input class="input" placeholder="Merchant label" value="Gym Membership">
+        <input class="input" placeholder="Amount" value="49.00">
+        <div class="button-row">
+          <button class="btn">Add recurring</button>
+          <button class="btn secondary">Cancel</button>
+        </div>
+      </div>
+      <div class="panel">
+        <strong>Quick filters</strong>
+        <div class="button-row">
+          <button class="btn secondary">This month</button>
+          <button class="btn secondary">Only posted</button>
+          <button class="btn secondary">Needs review</button>
+        </div>
+        <div class="hint">Tap feedback is instant. Results update as they arrive.</div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

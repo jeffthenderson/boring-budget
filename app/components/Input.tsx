@@ -34,9 +34,9 @@ export function Input({
   return (
     <div className={`flex flex-col gap-1 ${className}`}>
       {label && (
-        <label className="text-xs uppercase tracking-wider text-dark font-medium">
+        <label className="mono-label">
           {label}
-          {required && ' (REQUIRED)'}
+          {required && ' (required)'}
         </label>
       )}
       <input
@@ -52,8 +52,8 @@ export function Input({
         maxLength={maxLength}
         inputMode={inputMode}
         pattern={pattern}
-        className={`border-2 border-cubicle-taupe bg-white px-3 py-2 text-dark focus:outline-none focus:border-dark font-sans ${
-          disabled ? 'opacity-50 cursor-not-allowed' : ''
+        className={`rounded-md border border-line bg-white px-3 py-2 text-sm text-foreground shadow-sm transition duration-150 ease-out placeholder:text-slate-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
+          disabled ? 'opacity-60 cursor-not-allowed bg-surface-muted' : ''
         }`}
       />
     </div>

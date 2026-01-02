@@ -64,7 +64,7 @@ export function InlineNoteEditor({
           onChange={(e) => setEditValue(e.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={handleSave}
-          className="flex-1 px-2 py-1 border border-cubicle-taupe rounded focus:outline-none focus:ring-2 focus:ring-dark text-xs"
+          className="flex-1 rounded-md border border-line px-2 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
           disabled={disabled}
           placeholder="Add a note"
         />
@@ -76,7 +76,7 @@ export function InlineNoteEditor({
     <button
       onClick={() => !disabled && setIsEditing(true)}
       disabled={disabled}
-      className={`mt-1 text-left text-xs ${disabled ? 'cursor-not-allowed text-monday-3pm' : 'text-monday-3pm hover:text-dark'}`}
+      className={`mt-1 text-left text-xs transition ${disabled ? 'cursor-not-allowed text-monday-3pm' : 'text-monday-3pm hover:text-foreground'}`}
     >
       {hasNote ? `Note: ${note}` : 'Add note'}
     </button>

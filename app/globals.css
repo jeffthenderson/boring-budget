@@ -1,33 +1,124 @@
+@import url('https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@500;600&family=Bricolage+Grotesque:wght@500;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #E5E5E0;
-  --foreground: #4A4A45;
-  --ceiling-grey: #C4C4BC;
-  --cubicle-taupe: #9B9B93;
-  --monday-3pm: #6E6E68;
-  --dark: #4A4A45;
+  --background: #F9FAFB;
+  --foreground: #0F172A;
+  --monday-3pm: #64748B;
+  --dark: #0F172A;
   --white: #FFFFFF;
+  --accent: #111827;
+  --accent-strong: #0B1220;
+  --accent-soft: #E5E7EB;
+  --danger: #E11D48;
+  --danger-strong: #BE123C;
+  --danger-soft: #FFE4E9;
+  --surface: #FFFFFF;
+  --surface-muted: #F3F4F6;
+  --line: #E2E8F0;
+  --font-body: 'Bricolage Grotesque', 'Noto Sans', 'Liberation Sans', sans-serif;
+  --font-display: 'Bricolage Grotesque', 'Noto Sans', 'Liberation Sans', sans-serif;
+  --font-mono: 'Azeret Mono', 'IBM Plex Mono', 'SFMono-Regular', monospace;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-ceiling-grey: var(--ceiling-grey);
-  --color-cubicle-taupe: var(--cubicle-taupe);
   --color-monday-3pm: var(--monday-3pm);
   --color-dark: var(--dark);
   --color-white: var(--white);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-danger-strong: var(--danger-strong);
+  --color-danger-soft: var(--danger-soft);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-line: var(--line);
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-mono);
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
+  background-image:
+    linear-gradient(90deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
   color: var(--foreground);
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: var(--font-body);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.55;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.page-shell {
+  animation: page-enter 220ms ease-out;
 }
 
 * {
   box-sizing: border-box;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+.mono-label {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 10px;
+  color: var(--monday-3pm);
+  font-weight: 600;
+}
+
+.mono-chip {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+button,
+[role='button'] {
+  transition: transform 90ms ease, background-color 150ms ease, color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+
+button:active,
+[role='button']:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+a {
+  transition: color 150ms ease;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

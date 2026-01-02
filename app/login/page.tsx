@@ -204,14 +204,19 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-8">
-      <Card title={inviteType ? 'Set Password' : 'Login'}>
+    <div className="min-h-screen px-4 py-10 md:py-16">
+      <div className="mx-auto w-full max-w-md space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">Boring Budget</h1>
+          <p className="text-sm text-monday-3pm">Quiet money. Quietly updated.</p>
+        </div>
+        <Card title={inviteType ? 'Set password' : 'Login'}>
         {inviteType ? (
           <form onSubmit={handleSetPassword} className="space-y-4">
             <div className="text-xs text-monday-3pm">
               {inviteType === 'invite'
-                ? 'Finish your invite by setting a password.'
-                : 'Set a new password to regain access.'}
+                ? 'Set a password to accept the invite. No confetti.'
+                : 'Set a new password to regain access. Still calm.'}
               {inviteEmail ? ` Signed in as ${inviteEmail}.` : ''}
             </div>
             <Input
@@ -229,7 +234,7 @@ export default function LoginPage() {
               required
             />
             <Button type="submit" disabled={loading}>
-              {loading ? 'SAVING...' : 'SET PASSWORD'}
+              {loading ? 'Saving...' : 'Set password'}
             </Button>
             {error && (
               <div className="text-sm text-monday-3pm">{error}</div>
@@ -253,11 +258,11 @@ export default function LoginPage() {
             />
             <div className="flex flex-wrap gap-2">
               <Button type="submit" disabled={loading}>
-                {loading ? 'CHECKING...' : 'SIGN IN'}
+                {loading ? 'Checking...' : 'Sign in'}
               </Button>
             </div>
             <div className="text-xs text-monday-3pm">
-              Invite-only access. Ask an admin for an invite.
+              Invite-only access. Ask nicely.
             </div>
             {error && (
               <div className="text-sm text-monday-3pm">{error}</div>
@@ -266,7 +271,7 @@ export default function LoginPage() {
         ) : (
           <form onSubmit={handleVerifyMfa} className="space-y-4">
             <Input
-              label="Authentication Code"
+              label="Authentication code"
               type="text"
               inputMode="numeric"
               value={mfaCode}
@@ -274,14 +279,15 @@ export default function LoginPage() {
               required
             />
             <Button type="submit" disabled={loading}>
-              {loading ? 'VERIFYING...' : 'VERIFY MFA'}
+              {loading ? 'Verifying...' : 'Verify MFA'}
             </Button>
             {error && (
               <div className="text-sm text-monday-3pm">{error}</div>
             )}
           </form>
         )}
-      </Card>
+        </Card>
+      </div>
     </div>
   )
 }

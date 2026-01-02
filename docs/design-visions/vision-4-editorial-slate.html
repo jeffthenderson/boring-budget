@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Boring Budget - Vision 4: Editorial Slate</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=Bodoni+Moda:opsz,wght@6..96,500;700&display=swap');
+
+    :root {
+      --bg: #F5F6F8;
+      --paper: #FFFFFF;
+      --ink: #14181F;
+      --muted: #5B6675;
+      --line: #E1E5EB;
+      --accent: #C81E1E;
+      --accent-soft: #FBEAEA;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: 'Archivo', sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    .sheet {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 26px 24px 64px;
+      animation: fade-up 220ms ease-out;
+    }
+
+    @keyframes fade-up {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .top {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: center;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 16px;
+    }
+
+    .logo {
+      font-family: 'Bodoni Moda', serif;
+      font-size: 24px;
+      letter-spacing: 0.04em;
+    }
+
+    .menu {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .menu a {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: var(--muted);
+      text-decoration: none;
+      border-bottom: 2px solid transparent;
+      padding-bottom: 4px;
+    }
+
+    .menu a.active {
+      color: var(--ink);
+      border-color: var(--accent);
+    }
+
+    .hero {
+      margin-top: 26px;
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 18px;
+    }
+
+    h1 {
+      font-family: 'Bodoni Moda', serif;
+      font-size: 38px;
+      margin: 0 0 12px;
+    }
+
+    p { margin: 0; color: var(--muted); line-height: 1.6; }
+
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: #FFFFFF;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: transform 90ms ease, box-shadow 150ms ease;
+    }
+
+    .btn:active { transform: translateY(1px) scale(0.99); }
+
+    .btn.secondary {
+      background: var(--paper);
+      color: var(--ink);
+      border-color: var(--line);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin: 18px 0;
+    }
+
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      background: var(--paper);
+    }
+
+    .stat .label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+    }
+
+    .stat .value {
+      font-size: 22px;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+
+    .list {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--paper);
+      padding: 14px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr 1fr auto;
+      gap: 12px;
+      padding: 12px 8px;
+      border-bottom: 1px solid var(--line);
+      align-items: center;
+    }
+
+    .row:last-child { border-bottom: none; }
+
+    .badge {
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    .note {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: 1fr; }
+      .row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <header class="top">
+      <div>
+        <div class="logo">Boring Budget</div>
+        <p>Editorial calm. Snappy response.</p>
+      </div>
+      <nav class="menu">
+        <a class="active" href="#">Budget</a>
+        <a href="#">Recurring</a>
+        <a href="#">Import</a>
+        <a href="#">Settings</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <div>
+        <h1>Budgeting, but with a deadpan grin.</h1>
+        <p>Tap feedback is immediate. Server updates arrive quietly. If something fails, we roll back and apologize without fanfare.</p>
+        <div style="margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap;">
+          <button class="btn">Add transaction</button>
+          <button class="btn secondary">Undo</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="stat">
+          <div class="label">net position</div>
+          <div class="value">$1,914.05</div>
+        </div>
+        <div class="note">Saved. No applause.</div>
+      </div>
+    </section>
+
+    <section class="stats">
+      <div class="stat">
+        <div class="label">remaining</div>
+        <div class="value">$692.10</div>
+      </div>
+      <div class="stat">
+        <div class="label">projected</div>
+        <div class="value">$2,420.00</div>
+      </div>
+      <div class="stat">
+        <div class="label">posted</div>
+        <div class="value">21</div>
+      </div>
+    </section>
+
+    <section class="list">
+      <div class="row">
+        <div>
+          <strong>Rent</strong>
+          <div class="note">Recurring match</div>
+        </div>
+        <div>$1,700.00</div>
+        <div class="badge">projected</div>
+        <div><button class="btn">Post</button></div>
+      </div>
+      <div class="row">
+        <div>
+          <strong>Bookstore</strong>
+          <div class="note">Manual entry</div>
+        </div>
+        <div>$38.20</div>
+        <div class="badge">posted</div>
+        <div><button class="btn secondary">Edit</button></div>
+      </div>
+      <div class="row">
+        <div>
+          <strong>Utilities</strong>
+          <div class="note">Imported</div>
+        </div>
+        <div>$119.00</div>
+        <div class="badge">review</div>
+        <div><button class="btn secondary">Link</button></div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top: 16px;">
+      <strong>Add recurring</strong>
+      <input class="input" value="Insurance" aria-label="merchant">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <input class="input" value="85.00" aria-label="amount">
+        <input class="input" value="Monthly" aria-label="frequency">
+      </div>
+      <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+        <button class="btn">Add recurring</button>
+        <button class="btn secondary">Cancel</button>
+      </div>
+      <div class="note">Instant UI update. Confirmed later.</div>
+    </section>
+  </div>
+</body>
+</html>

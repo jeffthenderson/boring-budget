@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Boring Budget - Vision 2: Ledger Grid</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;500;600&family=Azeret+Mono:wght@500;600&display=swap');
+
+    :root {
+      --bg: #F9FAFB;
+      --paper: #FFFFFF;
+      --ink: #0F172A;
+      --muted: #64748B;
+      --line: #E2E8F0;
+      --accent: #F97316;
+      --accent-soft: #FFF3E6;
+      --ok: #0EA5E9;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px) 0 0 / 24px 24px,
+        linear-gradient(0deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px) 0 0 / 24px 24px,
+        var(--bg);
+      color: var(--ink);
+      font-family: 'Albert Sans', sans-serif;
+    }
+
+    .frame {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 28px 22px 60px;
+      animation: snap-in 180ms ease-out;
+    }
+
+    @keyframes snap-in {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border: 1px solid var(--line);
+      background: var(--paper);
+      border-radius: 14px;
+      padding: 14px 16px;
+    }
+
+    .brand {
+      font-family: 'Azeret Mono', monospace;
+      font-size: 14px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .nav-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      font-family: 'Azeret Mono', monospace;
+      font-size: 12px;
+      border: 1px solid var(--line);
+      padding: 6px 10px;
+      border-radius: 10px;
+      color: var(--muted);
+      background: #FFFFFF;
+    }
+
+    .tab.active {
+      color: var(--ink);
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .hero {
+      margin: 24px 0 18px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    h1 {
+      font-family: 'Azeret Mono', monospace;
+      font-size: 28px;
+      margin: 0 0 10px;
+    }
+
+    p { margin: 0; color: var(--muted); line-height: 1.6; }
+
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.04);
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-family: 'Azeret Mono', monospace;
+      font-size: 12px;
+      border-radius: 10px;
+      padding: 10px 14px;
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: #FFFFFF;
+      cursor: pointer;
+      transition: transform 90ms ease, box-shadow 150ms ease;
+    }
+
+    .button:active { transform: translateY(1px) scale(0.99); }
+
+    .button.secondary {
+      background: #FFFFFF;
+      border-color: var(--line);
+      color: var(--ink);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin: 16px 0 20px;
+    }
+
+    .stat {
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: #FFFFFF;
+    }
+
+    .stat .label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .stat .value {
+      margin-top: 8px;
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .list {
+      border: 1px solid var(--line);
+      background: #FFFFFF;
+      border-radius: 16px;
+      padding: 14px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1fr auto;
+      gap: 12px;
+      padding: 12px 8px;
+      border-bottom: 1px solid var(--line);
+      align-items: center;
+    }
+
+    .row:last-child { border-bottom: none; }
+
+    .chip {
+      font-family: 'Azeret Mono', monospace;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 8px;
+      background: #F1F5F9;
+      color: var(--muted);
+    }
+
+    .chip.ok { background: rgba(14, 165, 233, 0.12); color: #0284C7; }
+
+    .form {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr auto;
+      gap: 10px;
+      margin-top: 14px;
+      align-items: end;
+    }
+
+    .input {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      font-size: 13px;
+    }
+
+    .note {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 10px;
+    }
+
+    .notice {
+      margin-top: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--accent-soft);
+      border: 1px solid var(--accent);
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 12px;
+    }
+
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; }
+      .grid { grid-template-columns: 1fr 1fr; }
+      .row { grid-template-columns: 1fr; }
+      .form { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <nav class="nav">
+      <div>
+        <div class="brand">Boring Budget</div>
+        <p>Ledger-grade calm. Tap speed: instant.</p>
+      </div>
+      <div class="nav-actions">
+        <div class="tab active">Budget</div>
+        <div class="tab">Recurring</div>
+        <div class="tab">Accounts</div>
+        <div class="tab">Import</div>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <div class="card">
+        <h1>Monotony, but with precision.</h1>
+        <p>You tap it, it happens. The server confirms later. If it fails, we quietly roll back with a polite note.</p>
+        <div style="margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap;">
+          <button class="button">Add recurring</button>
+          <button class="button secondary">Undo</button>
+        </div>
+        <div class="notice">Saved. Nothing exciting happened.</div>
+      </div>
+      <div class="card">
+        <div class="stat">
+          <div class="label">balance</div>
+          <div class="value">$2,182.44</div>
+        </div>
+        <div class="note">Server sync is quiet and off to the side.</div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="stat">
+        <div class="label">remaining</div>
+        <div class="value">$742.00</div>
+      </div>
+      <div class="stat">
+        <div class="label">posted</div>
+        <div class="value">18</div>
+      </div>
+      <div class="stat">
+        <div class="label">projected</div>
+        <div class="value">5</div>
+      </div>
+      <div class="stat">
+        <div class="label">needs review</div>
+        <div class="value">2</div>
+      </div>
+    </section>
+
+    <section class="list">
+      <div class="row">
+        <div>
+          <strong>Streaming Service</strong>
+          <div class="note">Recurring match</div>
+        </div>
+        <div>$12.99</div>
+        <div class="chip">projected</div>
+        <div><button class="button secondary">Post</button></div>
+      </div>
+      <div class="row">
+        <div>
+          <strong>City Transit</strong>
+          <div class="note">Imported</div>
+        </div>
+        <div>$44.00</div>
+        <div class="chip ok">posted</div>
+        <div><button class="button secondary">Edit</button></div>
+      </div>
+      <div class="row">
+        <div>
+          <strong>Coffee Shop</strong>
+          <div class="note">Manual entry</div>
+        </div>
+        <div>$6.50</div>
+        <div class="chip">pending</div>
+        <div><button class="button">Save</button></div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top: 16px;">
+      <strong>Quick add</strong>
+      <div class="form">
+        <input class="input" value="Groceries" aria-label="description">
+        <input class="input" value="84.23" aria-label="amount">
+        <input class="input" value="Food" aria-label="category">
+        <button class="button">Add</button>
+      </div>
+      <div class="note">Instant UI update. Sync in background.</div>
+    </section>
+  </div>
+</body>
+</html>

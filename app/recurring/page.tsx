@@ -315,15 +315,15 @@ export default function RecurringPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-8">
+    <div className="min-h-screen max-w-6xl mx-auto p-4 md:p-8">
       <TopNav />
       <header className="mb-8">
-        <Link href="/" className="text-dark hover:underline text-sm">← BACK TO BUDGET</Link>
-        <h1 className="text-2xl uppercase tracking-widest font-medium text-dark mt-4 mb-2">
-          Recurring Definitions
+        <Link href="/" className="text-foreground hover:underline text-sm">← Back to budget</Link>
+        <h1 className="text-2xl font-semibold text-foreground mt-4 mb-2">
+          Recurring schedules
         </h1>
         <p className="text-sm text-monday-3pm">
-            Manage recurring schedules (expenses + income). They'll appear automatically. (Whether you like it or not.)
+            Recurring schedules for expenses and income. They appear automatically.
         </p>
       </header>
 
@@ -331,11 +331,11 @@ export default function RecurringPage() {
         <Card title="Maintenance">
           <div className="space-y-3">
             <p className="text-sm text-monday-3pm">
-              Match existing imported transactions to your current recurring schedules across all open months.
+              Match imported transactions to your recurring schedules across open months.
             </p>
             <div className="flex flex-wrap items-center gap-3">
               <Button onClick={handleMatchOpenPeriods} disabled={matchingOpenPeriods || savingForm}>
-                {matchingOpenPeriods ? 'MATCHING...' : 'MATCH OPEN PERIODS'}
+                {matchingOpenPeriods ? 'Matching...' : 'Match open periods'}
               </Button>
               {matchSummary && (
                 <div className="text-xs text-monday-3pm">
@@ -346,16 +346,16 @@ export default function RecurringPage() {
           </div>
         </Card>
 
-        <Card title="Recurring Suggestions">
+        <Card title="Recurring suggestions">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-monday-3pm">
-              Monthly candidates detected from your imported transactions.
+              Monthly candidates detected from imports.
             </p>
             <Button
               variant="secondary"
               onClick={() => setCollapsedSuggestions(!collapsedSuggestions)}
             >
-              {collapsedSuggestions ? 'SHOW' : 'HIDE'}
+              {collapsedSuggestions ? 'Show' : 'Hide'}
             </Button>
           </div>
 
@@ -363,11 +363,11 @@ export default function RecurringPage() {
             <div className="mt-4 space-y-4">
               {loadingSuggestions ? (
                 <div className="text-sm text-monday-3pm">
-                  Scanning your transaction history...
+                  Scanning your transaction history. Calm.
                 </div>
               ) : suggestions.filter(s => !hiddenSuggestions.has(s.key)).length === 0 ? (
                 <div className="text-center py-6 text-monday-3pm">
-                  No recurring suggestions right now. (Everything is chaos.)
+                  No recurring suggestions right now. A rare calm moment.
                 </div>
               ) : (
                 suggestions
@@ -378,7 +378,7 @@ export default function RecurringPage() {
                     return (
                       <div
                         key={suggestion.key}
-                        className="border-2 border-cubicle-taupe bg-white p-4 space-y-3"
+                        className="rounded-md border border-line bg-white p-4 space-y-3"
                       >
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                         <div>
@@ -392,7 +392,7 @@ export default function RecurringPage() {
                             Confidence: {suggestion.confidence}% · Seen {suggestion.months.length} months
                           </div>
                         </div>
-                        <div className="text-sm text-dark">
+                        <div className="text-sm text-foreground">
                           {formatCurrency(suggestion.amountMedian)}
                         </div>
                       </div>
@@ -412,8 +412,8 @@ export default function RecurringPage() {
 
                       <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr] gap-4 items-center">
                         <div>
-                          <label className="text-xs uppercase tracking-wider text-dark font-medium">
-                            Category
+                          <label className="mono-label">
+                            category
                           </label>
                           <select
                             value={suggestionCategories[suggestion.key] || RECURRING_CATEGORIES[0]}
@@ -424,7 +424,7 @@ export default function RecurringPage() {
                               })
                             }
                             disabled={isSavingSuggestion}
-                            className="border-2 border-cubicle-taupe bg-white px-3 py-2 text-dark focus:outline-none focus:border-dark w-full"
+                            className="w-full rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                           >
                             {RECURRING_CATEGORIES.map(cat => (
                               <option key={cat} value={cat}>{cat}</option>
@@ -433,7 +433,7 @@ export default function RecurringPage() {
                         </div>
 
                         <Input
-                          label="Nominal Amount"
+                          label="Nominal amount"
                           type="text"
                           inputMode="decimal"
                           value={suggestionAmounts[suggestion.key] || suggestion.amountMedian.toFixed(2)}
@@ -448,7 +448,7 @@ export default function RecurringPage() {
 
                         <div className="flex flex-col gap-2">
                           <Button onClick={() => handleAddSuggestion(suggestion)} disabled={isSavingSuggestion}>
-                            {isSavingSuggestion ? 'ADDING...' : 'ADD RECURRING'}
+                            {isSavingSuggestion ? 'Adding...' : 'Add recurring'}
                           </Button>
                           <div className="flex items-center gap-2 text-xs text-monday-3pm">
                             <input
@@ -462,14 +462,14 @@ export default function RecurringPage() {
                                 })
                               }
                             />
-                            <span>Don’t show again</span>
+                            <span>Do not show again</span>
                           </div>
                           <Button
                             variant="secondary"
                             onClick={() => handleDismissSuggestion(suggestion)}
                             disabled={isSavingSuggestion}
                           >
-                            {isSavingSuggestion ? 'WORKING...' : 'DO NOT ADD'}
+                            {isSavingSuggestion ? 'Working...' : 'Do not add'}
                           </Button>
                         </div>
                       </div>
@@ -486,11 +486,11 @@ export default function RecurringPage() {
                           setExpandedSuggestions(next)
                         }}
                       >
-                        {expandedSuggestions.has(suggestion.key) ? 'HIDE DETAILS' : 'SHOW DETAILS'}
+                        {expandedSuggestions.has(suggestion.key) ? 'Hide details' : 'Show details'}
                       </Button>
 
                         {expandedSuggestions.has(suggestion.key) && (
-                          <div className="mt-2 border-t border-cubicle-taupe pt-3 space-y-2 text-sm">
+                          <div className="mt-2 border-t border-line pt-3 space-y-2 text-sm">
                             {suggestion.occurrences.map((occurrence, index) => (
                               <div key={`${suggestion.key}-${index}`} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                                 <div>{formatDateDisplay(occurrence.date)}</div>
@@ -528,11 +528,11 @@ export default function RecurringPage() {
             }}
             disabled={!!editingId || savingForm}
           >
-            {showForm ? 'CANCEL' : editingId ? 'FINISH EDITING BELOW' : 'ADD RECURRING SCHEDULE'}
+            {showForm ? 'Cancel' : editingId ? 'Finish editing below' : 'Add recurring schedule'}
           </Button>
 
           {showForm && (
-            <form onSubmit={handleSubmit} className="mt-4 space-y-4 border-t-2 border-cubicle-taupe pt-4">
+            <form onSubmit={handleSubmit} className="mt-4 space-y-4 border-t border-line pt-4">
               {renderRecurringFields({
                 merchantLabel,
                 displayLabel,
@@ -557,7 +557,7 @@ export default function RecurringPage() {
                 onSecondDayChange: setSecondDay,
               })}
               <Button type="submit" disabled={savingForm}>
-                {savingForm ? 'CREATING...' : 'CREATE SCHEDULE'}
+                {savingForm ? 'Creating...' : 'Create schedule'}
               </Button>
             </form>
           )}
@@ -573,7 +573,7 @@ export default function RecurringPage() {
               {definitions.map((def: any) => (
                 <div
                   key={def.id}
-                  className="border-b border-cubicle-taupe last:border-b-0 py-3"
+                  className="border-b border-line last:border-b-0 py-3"
                 >
                   <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-4 items-start md:items-center">
                     <div>
@@ -586,7 +586,7 @@ export default function RecurringPage() {
                     <div>{formatCurrency(def.nominalAmount)}</div>
                     <div className="text-sm text-monday-3pm capitalize">{def.frequency}</div>
                     <div>
-                      <span className={`px-2 py-1 text-xs uppercase ${def.active ? 'bg-ceiling-grey' : 'bg-background'}`}>
+                      <span className="rounded-full bg-accent-soft px-2 py-1 mono-label">
                         {def.active ? 'Active' : 'Inactive'}
                       </span>
                     </div>
@@ -596,7 +596,7 @@ export default function RecurringPage() {
                         onClick={() => startEdit(def)}
                         disabled={savingDefinitionIds.has(def.id) || savingForm}
                       >
-                        EDIT
+                        Edit
                       </Button>
                       <Button
                         variant="secondary"
@@ -604,23 +604,23 @@ export default function RecurringPage() {
                         disabled={savingDefinitionIds.has(def.id) || savingForm}
                       >
                         {savingDefinitionIds.has(def.id)
-                          ? 'UPDATING...'
+                          ? 'Updating...'
                           : def.active
-                            ? 'DEACTIVATE'
-                            : 'ACTIVATE'}
+                            ? 'Deactivate'
+                            : 'Activate'}
                       </Button>
                       <Button
                         variant="danger"
                         onClick={() => handleDelete(def.id)}
                         disabled={savingDefinitionIds.has(def.id) || savingForm}
                       >
-                        {savingDefinitionIds.has(def.id) ? 'DELETING...' : 'DELETE'}
+                        {savingDefinitionIds.has(def.id) ? 'Deleting...' : 'Delete'}
                       </Button>
                     </div>
                   </div>
 
                   {editingId === def.id && (
-                    <form onSubmit={handleSubmit} className="mt-4 space-y-4 border-2 border-cubicle-taupe bg-background p-4">
+                    <form onSubmit={handleSubmit} className="mt-4 space-y-4 border border-line bg-surface-muted p-4">
                       {renderRecurringFields({
                         merchantLabel,
                         displayLabel,
@@ -646,10 +646,10 @@ export default function RecurringPage() {
                       })}
                       <div className="flex flex-wrap gap-2">
                         <Button type="submit" disabled={savingForm}>
-                          {savingForm ? 'SAVING...' : 'SAVE CHANGES'}
+                          {savingForm ? 'Saving...' : 'Save changes'}
                         </Button>
                         <Button variant="secondary" type="button" onClick={cancelEdit} disabled={savingForm}>
-                          CANCEL
+                          Cancel
                         </Button>
                       </div>
                     </form>
@@ -706,7 +706,7 @@ function renderRecurringFields({
   return (
     <>
       <Input
-        label="Merchant Label (for matching)"
+        label="Merchant label (for matching)"
         value={merchantLabel}
         onChange={onMerchantLabelChange}
         placeholder="Netflix, Rent, etc."
@@ -714,20 +714,20 @@ function renderRecurringFields({
       />
 
       <Input
-        label="Display Label (optional)"
+        label="Display label (optional)"
         value={displayLabel}
         onChange={onDisplayLabelChange}
         placeholder="Paramount Plus, Spotify, etc."
       />
 
       <div className="flex flex-col gap-1">
-        <label className="text-xs uppercase tracking-wider text-dark font-medium">
-          Category (REQUIRED)
+        <label className="mono-label">
+          category (required)
         </label>
         <select
           value={category}
           onChange={(e) => onCategoryChange(e.target.value)}
-          className="border-2 border-cubicle-taupe bg-white px-3 py-2 text-dark focus:outline-none focus:border-dark"
+          className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
         >
           {RECURRING_CATEGORIES.map(cat => (
             <option key={cat} value={cat}>{cat}</option>
@@ -736,7 +736,7 @@ function renderRecurringFields({
       </div>
 
       <Input
-        label="Nominal Amount"
+        label="Nominal amount"
         type="text"
         inputMode="decimal"
         value={nominalAmount}
@@ -746,13 +746,13 @@ function renderRecurringFields({
       />
 
       <div className="flex flex-col gap-1">
-        <label className="text-xs uppercase tracking-wider text-dark font-medium">
-          Frequency (REQUIRED)
+        <label className="mono-label">
+          frequency (required)
         </label>
         <select
           value={frequency}
           onChange={(e) => onFrequencyChange(e.target.value)}
-          className="border-2 border-cubicle-taupe bg-white px-3 py-2 text-dark focus:outline-none focus:border-dark"
+          className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
         >
           <option value="monthly">Monthly</option>
           <option value="weekly">Weekly</option>
@@ -763,7 +763,7 @@ function renderRecurringFields({
 
       {frequency === 'monthly' && (
         <Input
-          label="Day of Month"
+          label="Day of month"
           type="number"
           min="1"
           max="31"
@@ -775,13 +775,13 @@ function renderRecurringFields({
 
       {(frequency === 'weekly' || frequency === 'biweekly') && (
         <div className="flex flex-col gap-1">
-          <label className="text-xs uppercase tracking-wider text-dark font-medium">
-            Day of Week (REQUIRED)
+          <label className="mono-label">
+            day of week (required)
           </label>
           <select
             value={dayOfWeek}
             onChange={(e) => onDayOfWeekChange(e.target.value)}
-            className="border-2 border-cubicle-taupe bg-white px-3 py-2 text-dark focus:outline-none focus:border-dark"
+            className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
           >
             <option value="0">Sunday</option>
             <option value="1">Monday</option>
@@ -797,7 +797,7 @@ function renderRecurringFields({
       {frequency === 'twice_monthly' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
-            label="First Day"
+            label="First day"
             type="number"
             min="1"
             max="31"
@@ -806,7 +806,7 @@ function renderRecurringFields({
             required
           />
           <Input
-            label="Second Day"
+            label="Second day"
             type="number"
             min="1"
             max="31"

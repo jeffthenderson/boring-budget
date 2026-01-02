@@ -16,7 +16,9 @@ export default async function RootLayout({
     <html lang="en">
       <body className="antialiased">
         <AuthStatus />
-        {children}
+        <div className="page-shell">
+          {children}
+        </div>
       </body>
     </html>
   );

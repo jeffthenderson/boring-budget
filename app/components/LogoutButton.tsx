@@ -17,9 +17,9 @@ export default function LogoutButton() {
     <button
       type="button"
       onClick={handleLogout}
-      className="text-monday-3pm hover:underline"
+      className="text-[11px] font-mono uppercase tracking-[0.08em] text-monday-3pm transition hover:text-foreground"
     >
-      LOGOUT
+      Log out
     </button>
   )
 }

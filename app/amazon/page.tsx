@@ -403,9 +403,9 @@ export default function AmazonPage() {
           return (
             <div
               key={groupKey}
-              className="flex flex-col gap-2 border-2 border-cubicle-taupe bg-white p-3"
+              className="flex flex-col gap-2 rounded-md border border-line bg-white p-3"
             >
-              <div className="text-sm text-dark">
+              <div className="text-sm text-foreground">
                 Group total: {formatCurrency(groupTotal, order.currency || 'CAD')}
                 {candidateGroup.dateSpanDays !== undefined && ` · ${candidateGroup.dateSpanDays}d span`}
               </div>
@@ -421,7 +421,7 @@ export default function AmazonPage() {
                   onClick={() => linkOrder(order.id, groupIds)}
                   disabled={isLinking}
                 >
-                  {isLinking ? 'LINKING...' : 'LINK THESE TRANSACTIONS'}
+                  {isLinking ? 'Linking...' : 'Link these transactions'}
                 </Button>
               </div>
             </div>
@@ -432,54 +432,54 @@ export default function AmazonPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-8">
+    <div className="min-h-screen max-w-6xl mx-auto p-4 md:p-8">
       <TopNav />
       <header className="mb-8">
-        <h1 className="text-2xl uppercase tracking-widest font-medium text-dark mt-4 mb-2">
-          Amazon Orders
+        <h1 className="text-2xl font-semibold text-foreground mt-4 mb-2">
+          Amazon orders
         </h1>
         <p className="text-sm text-monday-3pm">
-          Match Amazon orders to existing transactions. Use the LLM Categorize button on the budget page to categorize linked orders.
+          Match Amazon orders to transactions. Quietly effective.
         </p>
       </header>
 
       <div className="space-y-6">
-        <Card title="Bookmarklet Setup">
+        <Card title="Bookmarklet">
           <div className="space-y-4">
             <Input
-              label="Boring Budget Base URL"
+              label="App base URL"
               value={appBaseUrl}
               onChange={setAppBaseUrl}
               placeholder="https://boring-budget.vercel.app"
             />
             <div className="text-xs text-monday-3pm">
-              This should point to wherever your budget app is running (local or Vercel).
+              Point this at the budget app (local or Vercel).
             </div>
             <div className="text-xs text-monday-3pm">
-              Amazon is HTTPS only, so use your Vercel URL if your local app is not served over HTTPS.
+              Amazon requires HTTPS, so use Vercel if your local app is not HTTPS.
             </div>
             <div className="space-y-2">
-              <div className="text-xs uppercase tracking-wider text-dark font-medium">Bookmarklet</div>
+              <div className="mono-label">bookmarklet</div>
               <div className="flex flex-col gap-2">
                 <textarea
                   readOnly
                   value={bookmarklet}
-                  className="w-full min-h-[140px] border-2 border-cubicle-taupe bg-white px-3 py-2 text-xs text-dark font-mono"
+                  className="w-full min-h-[140px] rounded-md border border-line bg-white px-3 py-2 text-xs text-foreground font-mono"
                 />
                 <div className="flex flex-wrap gap-2">
                   <Button variant="secondary" onClick={() => copyText(bookmarklet, setStatusMessage)} disabled={!bookmarklet}>
-                    COPY BOOKMARKLET
+                    Copy bookmarklet
                   </Button>
                   <div
                     role="button"
                     tabIndex={0}
                     draggable={Boolean(bookmarklet)}
                     onDragStart={handleBookmarkletDrag}
-                    className={`px-4 py-2 border-2 border-dark font-sans uppercase tracking-wide text-sm font-medium bg-white text-dark select-none ${
-                      bookmarklet ? 'cursor-grab hover:bg-ceiling-grey' : 'opacity-50 cursor-not-allowed'
+                    className={`rounded-md border border-line bg-white px-3 py-2 font-mono text-[11px] uppercase tracking-[0.08em] text-foreground select-none transition ${
+                      bookmarklet ? 'cursor-grab hover:bg-accent-soft' : 'opacity-50 cursor-not-allowed'
                     }`}
                   >
-                    DRAG TO BOOKMARKS
+                    Drag to bookmarks
                   </div>
                 </div>
               </div>
@@ -491,25 +491,25 @@ export default function AmazonPage() {
           </div>
         </Card>
 
-        <Card title="Import Token (Optional)">
+        <Card title="Import token">
           <div className="space-y-3">
             <div className="text-xs text-monday-3pm">
               If you do not want to enter your passcode in the bookmarklet, generate a short-lived token instead.
             </div>
             <div className="flex flex-wrap gap-2">
               <Button onClick={generateToken} disabled={tokenLoading}>
-                {tokenLoading ? 'GENERATING...' : 'GENERATE TOKEN'}
+                {tokenLoading ? 'Generating...' : 'Generate token'}
               </Button>
               {tokenInfo?.token && (
                 <Button variant="secondary" onClick={() => copyText(tokenInfo.token, setTokenMessage)}>
-                  COPY TOKEN
+                  Copy token
                 </Button>
               )}
             </div>
             {tokenInfo?.token && (
               <div className="space-y-1">
-                <div className="text-xs uppercase tracking-wider text-dark font-medium">Token</div>
-                <div className="border-2 border-cubicle-taupe bg-white px-3 py-2 text-xs text-dark font-mono break-all">
+                <div className="mono-label">token</div>
+                <div className="rounded-md border border-line bg-white px-3 py-2 text-xs text-foreground font-mono break-all">
                   {tokenInfo.token}
                 </div>
                 <div className="text-xs text-monday-3pm">Expires: {tokenInfo.expiresAt}</div>
@@ -519,7 +519,7 @@ export default function AmazonPage() {
           </div>
         </Card>
 
-        <Card title="Orders Overview">
+        <Card title="Order summary">
           <div className="flex flex-wrap items-center gap-4 text-sm">
             <div>Total: {counts.total}</div>
             <div>Matched: {counts.matched}</div>
@@ -527,34 +527,34 @@ export default function AmazonPage() {
             <div>Unmatched: {counts.unmatched}</div>
             <div>Ignored: {ignoredCount}</div>
             <div className="flex items-center gap-2">
-              <label className="text-xs uppercase tracking-wider text-dark font-medium">Filter</label>
+              <label className="mono-label">filter</label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as (typeof STATUS_OPTIONS)[number])}
-                className="border-2 border-cubicle-taupe bg-white px-3 py-2 text-dark focus:outline-none focus:border-dark"
+                className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
               >
                 {STATUS_OPTIONS.map(option => (
                   <option key={option} value={option}>
-                    {option.toUpperCase()}
+                    {option}
                   </option>
                 ))}
               </select>
             </div>
-            <label className="flex items-center gap-2 text-xs uppercase tracking-wider text-dark font-medium">
+            <label className="flex items-center gap-2 mono-label">
               <input
                 type="checkbox"
                 checked={showIgnored}
                 onChange={(e) => setShowIgnored(e.target.checked)}
                 className="w-4 h-4 cursor-pointer"
               />
-              Show ignored
+              show ignored
             </label>
             <div className="flex flex-wrap gap-2 ml-auto">
               <Button variant="secondary" onClick={loadOrders} disabled={loadingOrders}>
-                {loadingOrders ? 'REFRESHING...' : 'REFRESH'}
+                {loadingOrders ? 'Refreshing...' : 'Refresh list'}
               </Button>
               <Button variant="secondary" onClick={runMatching} disabled={matching}>
-                {matching ? 'MATCHING...' : 'RE-RUN MATCHING'}
+                {matching ? 'Matching...' : 'Re-run matching'}
               </Button>
             </div>
           </div>
@@ -564,9 +564,9 @@ export default function AmazonPage() {
 
         <Card title={`Orders (${filteredOrders.length})`}>
           {loadingOrders ? (
-            <div className="text-sm text-monday-3pm">Loading orders...</div>
+            <div className="text-sm text-monday-3pm">Loading orders. Please wait.</div>
           ) : filteredOrders.length === 0 ? (
-            <div className="text-sm text-monday-3pm">No orders to show.</div>
+            <div className="text-sm text-monday-3pm">No orders to show. Calm.</div>
           ) : (
             <div className="space-y-4">
               {filteredOrders.map(order => {
@@ -583,13 +583,13 @@ export default function AmazonPage() {
                 const isSplit = linkedTransactions.length > 1
 
                 return (
-                  <div key={order.id} className="border-b border-cubicle-taupe pb-4 last:border-b-0 last:pb-0">
+                  <div key={order.id} className="border-b border-line pb-4 last:border-b-0 last:pb-0">
                     <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
                       <div>
-                        <div className="text-xs uppercase tracking-wider text-dark font-medium">
+                        <div className="mono-label">
                           {formatDate(order.orderDate)}
                         </div>
-                        <div className="text-lg text-dark">
+                        <div className="text-lg text-foreground">
                           {formatCurrency(order.orderTotal, order.currency || 'CAD')}
                         </div>
                         <div className="text-xs text-monday-3pm">Order #{order.amazonOrderId}</div>
@@ -598,29 +598,29 @@ export default function AmazonPage() {
                             href={order.orderUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-xs text-dark hover:underline"
+                            className="text-xs text-foreground hover:underline"
                           >
-                            View order on Amazon
+                            Open on Amazon
                           </a>
                         )}
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wider text-dark font-medium">
-                        <span>Status: {order.matchStatus}</span>
+                      <div className="flex flex-wrap items-center gap-2 mono-label">
+                        <span>status: {order.matchStatus}</span>
                         {order.isIgnored && <span className="text-monday-3pm">Ignored</span>}
                         <Button
                           variant="secondary"
                           onClick={() => toggleIgnore(order.id, !order.isIgnored)}
                           disabled={isIgnoring}
                         >
-                          {isIgnoring ? 'UPDATING...' : (order.isIgnored ? 'UNIGNORE' : 'IGNORE')}
+                          {isIgnoring ? 'Updating...' : (order.isIgnored ? 'Unignore' : 'Ignore')}
                         </Button>
                       </div>
                     </div>
 
                     {order.items.length > 0 && (
                       <div className="mt-3">
-                        <div className="text-xs uppercase tracking-wider text-dark font-medium">Items</div>
-                        <ul className="list-disc pl-5 text-sm text-dark">
+                        <div className="mono-label">items</div>
+                        <ul className="list-disc pl-5 text-sm text-foreground">
                           {order.items.map(item => (
                             <li key={item.id}>{item.title}</li>
                           ))}
@@ -629,9 +629,9 @@ export default function AmazonPage() {
                     )}
 
                     {order.matchStatus === 'matched' && linkedTransactions.length > 0 && (
-                      <div className="mt-3 border-t border-cubicle-taupe pt-3">
-                        <div className="text-xs uppercase tracking-wider text-dark font-medium">
-                          Matched Transactions{isSplit ? ' (Split)' : ''}
+                      <div className="mt-3 border-t border-line pt-3">
+                        <div className="mono-label">
+                          matched transactions{isSplit ? ' (split)' : ''}
                         </div>
                         {isSplit && (
                           <div className="text-xs text-monday-3pm">
@@ -641,7 +641,7 @@ export default function AmazonPage() {
                         <div className="mt-2 space-y-2">
                           {linkedTransactions.map(tx => (
                             <div key={tx.id}>
-                              <div className="text-sm text-dark">
+                              <div className="text-sm text-foreground">
                                 {formatDate(tx.date)} · {formatCurrency(Math.abs(tx.amount), order.currency || 'CAD')}
                               </div>
                               <div className="text-xs text-monday-3pm">
@@ -664,15 +664,15 @@ export default function AmazonPage() {
                             onClick={() => linkOrder(order.id, [])}
                             disabled={isLinking}
                           >
-                            {isLinking ? 'UPDATING...' : 'UNLINK'}
+                            {isLinking ? 'Updating...' : 'Unlink'}
                           </Button>
                         </div>
                       </div>
                     )}
 
                     {order.matchStatus === 'ambiguous' && (
-                      <div className="mt-3 border-t border-cubicle-taupe pt-3 space-y-2">
-                        <div className="text-xs uppercase tracking-wider text-dark font-medium">Possible Matches</div>
+                      <div className="mt-3 border-t border-line pt-3 space-y-2">
+                        <div className="mono-label">possible matches</div>
                         <div className="flex flex-wrap items-center gap-2">
                           <Button
                             variant="secondary"
@@ -680,8 +680,8 @@ export default function AmazonPage() {
                             disabled={isCandidateLoading}
                           >
                             {isCandidateLoading
-                              ? 'LOADING...'
-                              : (manualLoaded ? 'REFRESH CANDIDATES' : 'FIND CANDIDATES')}
+                              ? 'Loading...'
+                              : (manualLoaded ? 'Refresh candidates' : 'Find candidates')}
                           </Button>
                           {candidateError && (
                             <div className="text-xs text-monday-3pm">{candidateError}</div>
@@ -698,7 +698,7 @@ export default function AmazonPage() {
                     )}
 
                     {order.matchStatus === 'unmatched' && (
-                      <div className="mt-3 border-t border-cubicle-taupe pt-3">
+                      <div className="mt-3 border-t border-line pt-3">
                         <div className="text-xs text-monday-3pm">
                           No matching Amazon transactions found. Import the transaction CSV first, then re-run matching.
                         </div>
@@ -709,8 +709,8 @@ export default function AmazonPage() {
                             disabled={isCandidateLoading}
                           >
                             {isCandidateLoading
-                              ? 'LOADING...'
-                              : (manualLoaded ? 'REFRESH CANDIDATES' : 'FIND CANDIDATES')}
+                              ? 'Loading...'
+                              : (manualLoaded ? 'Refresh candidates' : 'Find candidates')}
                           </Button>
                           {candidateError && (
                             <div className="text-xs text-monday-3pm">{candidateError}</div>

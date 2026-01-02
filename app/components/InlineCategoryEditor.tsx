@@ -76,10 +76,10 @@ export function InlineCategoryEditor({
         onClick={() => !disabled && setIsOpen(!isOpen)}
         onKeyDown={handleKeyDown}
         disabled={disabled}
-        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+        className={`px-3 py-1 rounded-md text-[10px] font-mono uppercase tracking-[0.12em] transition duration-150 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
           disabled
-            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-            : `${colors.bg} ${colors.text} hover:opacity-80 cursor-pointer`
+            ? 'bg-surface-muted text-monday-3pm cursor-not-allowed'
+            : `${colors.bg} ${colors.text} hover:brightness-95 cursor-pointer`
         }`}
         aria-label={`Category: ${currentCategory}. Press Enter to change.`}
       >
@@ -89,15 +89,15 @@ export function InlineCategoryEditor({
       {isOpen && (
         <div
           ref={dropdownRef}
-          className="absolute z-50 mt-1 w-64 bg-white border border-gray-300 rounded-lg shadow-lg"
+          className="absolute z-50 mt-1 w-64 rounded-lg border border-line bg-white shadow-lg"
         >
           <input
             type="text"
-            placeholder="Search categories..."
+            placeholder="Search categories"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full px-3 py-2 border-b border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full border-b border-line bg-white px-3 py-2 text-sm text-foreground placeholder:text-slate-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
             autoFocus
           />
           <div className="max-h-60 overflow-y-auto">
@@ -105,15 +105,15 @@ export function InlineCategoryEditor({
               <button
                 key={category}
                 onClick={() => handleCategorySelect(category)}
-                className={`w-full px-3 py-2 text-left hover:bg-gray-100 transition-colors ${
-                  category === currentCategory ? 'bg-blue-50 font-medium' : ''
+                className={`w-full px-3 py-2 text-left text-sm transition-colors hover:bg-surface-muted ${
+                  category === currentCategory ? 'bg-accent-soft font-semibold' : ''
                 }`}
               >
                 {category}
               </button>
             ))}
             {filteredCategories.length === 0 && (
-              <div className="px-3 py-2 text-gray-500 text-sm">No categories found</div>
+              <div className="px-3 py-2 text-sm text-monday-3pm">No categories found. Calm.</div>
             )}
           </div>
         </div>

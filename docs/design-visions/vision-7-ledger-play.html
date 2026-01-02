@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Boring Budget - Vision 7: Ledger Play</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=Azeret+Mono:wght@500;600&display=swap');
+
+    :root {
+      --bg: #F6F7FB;
+      --paper: #FFFFFF;
+      --ink: #161A22;
+      --muted: #5E6B7D;
+      --line: #DFE4ED;
+      --accent: #0EA5A4;
+      --accent-soft: #E6F7F7;
+      --accent-2: #F97316;
+      --accent-2-soft: #FFF1E6;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(220px 220px at 12% 12%, rgba(14, 165, 164, 0.08), transparent 65%),
+        radial-gradient(240px 240px at 90% 20%, rgba(249, 115, 22, 0.08), transparent 60%),
+        linear-gradient(90deg, rgba(22, 26, 34, 0.04) 1px, transparent 1px) 0 0 / 26px 26px,
+        linear-gradient(0deg, rgba(22, 26, 34, 0.04) 1px, transparent 1px) 0 0 / 26px 26px,
+        var(--bg);
+      color: var(--ink);
+      font-family: 'Bricolage Grotesque', sans-serif;
+    }
+
+    .frame {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 22px 66px;
+      animation: snap 220ms ease-out;
+    }
+
+    @keyframes snap {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border: 1px solid var(--line);
+      background: var(--paper);
+      border-radius: 16px;
+      padding: 14px 16px;
+    }
+
+    .brand {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .nav-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-family: 'Azeret Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .tab {
+      border: 1px solid var(--line);
+      padding: 6px 10px;
+      border-radius: 9px;
+      color: var(--muted);
+      background: #FFFFFF;
+    }
+
+    .tab.active {
+      color: var(--ink);
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .hero {
+      margin: 22px 0 18px;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 16px;
+    }
+
+    h1 {
+      font-family: 'Azeret Mono', monospace;
+      font-size: 24px;
+      margin: 0 0 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    p { margin: 0; color: var(--muted); line-height: 1.6; }
+
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-family: 'Azeret Mono', monospace;
+      font-size: 11px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: #FFFFFF;
+      cursor: pointer;
+      transition: transform 90ms ease, box-shadow 150ms ease;
+    }
+
+    .btn:active { transform: translateY(1px) scale(0.99); }
+
+    .btn.secondary {
+      background: #FFFFFF;
+      border-color: var(--line);
+      color: var(--ink);
+    }
+
+    .btn.warn {
+      background: var(--accent-2);
+      border-color: var(--accent-2);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin: 16px 0 20px;
+    }
+
+    .stat {
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: #FFFFFF;
+    }
+
+    .stat .label {
+      font-family: 'Azeret Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .stat .value {
+      margin-top: 8px;
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .list {
+      border: 1px solid var(--line);
+      background: #FFFFFF;
+      border-radius: 16px;
+      padding: 14px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr 1fr auto;
+      gap: 12px;
+      padding: 12px 8px;
+      border-bottom: 1px solid var(--line);
+      align-items: center;
+    }
+
+    .row:last-child { border-bottom: none; }
+
+    .chip {
+      font-family: 'Azeret Mono', monospace;
+      font-size: 10px;
+      padding: 4px 8px;
+      border-radius: 8px;
+      background: var(--accent-soft);
+      color: var(--ink);
+    }
+
+    .chip.warn { background: var(--accent-2-soft); color: var(--accent-2); }
+
+    .form {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr auto;
+      gap: 10px;
+      margin-top: 14px;
+      align-items: end;
+    }
+
+    .input {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      font-size: 13px;
+    }
+
+    .note {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 10px;
+    }
+
+    .notice {
+      margin-top: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--accent-soft);
+      border: 1px solid var(--accent);
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 12px;
+    }
+
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; }
+      .grid { grid-template-columns: 1fr 1fr; }
+      .row { grid-template-columns: 1fr; }
+      .form { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <nav class="nav">
+      <div>
+        <div class="brand">Boring Budget</div>
+        <p>Ledger bones, cheeky tone, instant taps.</p>
+      </div>
+      <div class="nav-actions">
+        <div class="tab active">Budget</div>
+        <div class="tab">Recurring</div>
+        <div class="tab">Accounts</div>
+        <div class="tab">Import</div>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <div class="card">
+        <h1>boring, but make it quick.</h1>
+        <p>Your clicks update immediately. The server follows politely. If anything breaks, we quietly reverse it.</p>
+        <div style="margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap;">
+          <button class="btn">Add recurring</button>
+          <button class="btn secondary">Review matches</button>
+          <button class="btn warn">Undo drama</button>
+        </div>
+        <div class="notice">Saved. Try not to smile.</div>
+      </div>
+      <div class="card">
+        <div class="stat">
+          <div class="label">balance</div>
+          <div class="value">$2,214.09</div>
+        </div>
+        <div class="note">Sync is quiet. Like this copy.</div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="stat">
+        <div class="label">remaining</div>
+        <div class="value">$812.11</div>
+      </div>
+      <div class="stat">
+        <div class="label">posted</div>
+        <div class="value">19</div>
+      </div>
+      <div class="stat">
+        <div class="label">projected</div>
+        <div class="value">6</div>
+      </div>
+      <div class="stat">
+        <div class="label">needs review</div>
+        <div class="value">2</div>
+      </div>
+    </section>
+
+    <section class="list">
+      <div class="row">
+        <div>
+          <strong>Phone bill</strong>
+          <div class="note">Recurring match</div>
+        </div>
+        <div>$55.00</div>
+        <div class="chip">projected</div>
+        <div><button class="btn secondary">Post</button></div>
+      </div>
+      <div class="row">
+        <div>
+          <strong>Market run</strong>
+          <div class="note">Imported</div>
+        </div>
+        <div>$76.42</div>
+        <div class="chip">posted</div>
+        <div><button class="btn secondary">Edit</button></div>
+      </div>
+      <div class="row">
+        <div>
+          <strong>Streaming</strong>
+          <div class="note">Needs match</div>
+        </div>
+        <div>$12.99</div>
+        <div class="chip warn">review</div>
+        <div><button class="btn secondary">Link</button></div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top: 16px;">
+      <strong>Quick add</strong>
+      <div class="form">
+        <input class="input" value="Groceries" aria-label="description">
+        <input class="input" value="84.23" aria-label="amount">
+        <input class="input" value="Food" aria-label="category">
+        <button class="btn">Add</button>
+      </div>
+      <div class="note">Instant UI update. Quiet sync later.</div>
+    </section>
+  </div>
+</body>
+</html>

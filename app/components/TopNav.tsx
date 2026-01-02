@@ -5,11 +5,11 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 const NAV_ITEMS = [
-  { href: '/', label: 'BUDGET' },
-  { href: '/recurring', label: 'RECURRING' },
-  { href: '/accounts', label: 'ACCOUNTS' },
-  { href: '/amazon', label: 'AMAZON' },
-  { href: '/settings', label: 'SETTINGS' },
+  { href: '/', label: 'Budget' },
+  { href: '/recurring', label: 'Recurring' },
+  { href: '/accounts', label: 'Accounts' },
+  { href: '/amazon', label: 'Amazon' },
+  { href: '/settings', label: 'Settings' },
 ]
 
 export function TopNav({ showBrand = true }: { showBrand?: boolean }) {
@@ -17,24 +17,26 @@ export function TopNav({ showBrand = true }: { showBrand?: boolean }) {
   const pathname = usePathname()
 
   return (
-    <div className="mb-6 border-b-4 border-dark pb-4">
+    <div className="mb-6 border-b border-line pb-4">
       <div className="flex items-center justify-between gap-4">
         {showBrand && (
-          <Link href="/" className="text-xs uppercase tracking-[0.3em] text-dark">
-            Boring Budget
-          </Link>
+          <div className="flex flex-col">
+            <Link href="/" className="text-sm font-semibold tracking-tight text-foreground">
+              Boring Budget
+            </Link>
+            <span className="text-[11px] text-monday-3pm">
+              Financially unexciting, on purpose.
+            </span>
+          </div>
         )}
         <button
           type="button"
           onClick={() => setOpen(prev => !prev)}
           aria-expanded={open}
           aria-controls="top-nav"
-          className="md:hidden border-2 border-cubicle-taupe p-2 text-dark"
+          className="md:hidden rounded-md border border-line bg-white px-3 py-2 text-[11px] font-mono uppercase tracking-[0.08em] text-foreground transition hover:bg-accent-soft"
         >
-          <span className="sr-only">{open ? 'Close menu' : 'Open menu'}</span>
-          <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
-            <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
+          {open ? 'Close' : 'Menu'}
         </button>
       </div>
 
@@ -49,7 +51,11 @@ export function TopNav({ showBrand = true }: { showBrand?: boolean }) {
               key={item.href}
               href={item.href}
               onClick={() => setOpen(false)}
-              className={`text-dark hover:underline ${isActive ? 'font-medium underline' : ''}`}
+              className={`rounded-full px-3 py-1 font-mono text-[11px] uppercase tracking-[0.08em] transition ${
+                isActive
+                  ? 'bg-accent-soft text-foreground'
+                  : 'text-monday-3pm hover:bg-accent-soft hover:text-foreground'
+              }`}
             >
               {item.label}
             </Link>

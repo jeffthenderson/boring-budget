@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Boring Budget - Vision 3: Wry Playful</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=Hanken+Grotesk:wght@400;500;600&display=swap');
+
+    :root {
+      --bg: #F6F7FB;
+      --paper: #FFFFFF;
+      --ink: #151922;
+      --muted: #5F6B7A;
+      --line: #E1E6EF;
+      --accent: #0EA5A4;
+      --accent-soft: #E7F7F7;
+      --accent-2: #F97316;
+      --accent-2-soft: #FFF1E6;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: 'Hanken Grotesk', sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(200px 200px at 12% 10%, rgba(14, 165, 164, 0.08), transparent 60%),
+        radial-gradient(240px 240px at 90% 20%, rgba(249, 115, 22, 0.08), transparent 60%),
+        var(--bg);
+    }
+
+    .wrap {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 28px 22px 64px;
+      animation: slide-in 220ms ease-out;
+    }
+
+    @keyframes slide-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand {
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      border: 1px solid var(--line);
+      background: var(--paper);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .chip.active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--ink);
+    }
+
+    h1 {
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: 34px;
+      margin: 16px 0 10px;
+    }
+
+    p { margin: 0; color: var(--muted); line-height: 1.6; }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 16px;
+      margin: 20px 0;
+    }
+
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: #FFFFFF;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: transform 90ms ease, box-shadow 150ms ease;
+    }
+
+    .btn:active { transform: translateY(1px) scale(0.99); }
+
+    .btn.secondary {
+      background: var(--paper);
+      color: var(--ink);
+      border-color: var(--line);
+    }
+
+    .btn.warn {
+      background: var(--accent-2);
+      border-color: var(--accent-2);
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--ink);
+    }
+
+    .tag.warn { background: var(--accent-2-soft); }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .metric .label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .metric .value {
+      font-size: 22px;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+
+    .list {
+      margin-top: 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--paper);
+      padding: 14px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1fr auto;
+      gap: 10px;
+      padding: 12px 6px;
+      border-bottom: 1px solid var(--line);
+      align-items: center;
+    }
+
+    .row:last-child { border-bottom: none; }
+
+    .input {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    .note {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .banner {
+      margin-top: 14px;
+      border: 1px solid var(--accent);
+      background: var(--accent-soft);
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+    }
+
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; }
+      .metrics { grid-template-columns: 1fr; }
+      .row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav class="nav">
+      <div>
+        <div class="brand">Boring Budget</div>
+        <p>Deadpan, but delightful.</p>
+      </div>
+      <div class="nav-links">
+        <div class="chip active">Budget</div>
+        <div class="chip">Recurring</div>
+        <div class="chip">Import</div>
+        <div class="chip">Settings</div>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <div>
+        <h1>Snappy on tap. Dry on purpose.</h1>
+        <p>We wink at the boredom so you do not have to. Everything reacts instantly, then politely confirms in the background.</p>
+        <div style="margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap;">
+          <button class="btn">Add transaction</button>
+          <button class="btn secondary">Review matches</button>
+          <button class="btn warn">Undo drama</button>
+        </div>
+        <div class="banner">Saved. Try not to celebrate.</div>
+      </div>
+      <div class="card">
+        <div class="metrics">
+          <div class="metric">
+            <div class="label">remaining</div>
+            <div class="value">$912.30</div>
+          </div>
+          <div class="metric">
+            <div class="label">spent</div>
+            <div class="value">$1,324.90</div>
+          </div>
+          <div class="metric">
+            <div class="label">projected</div>
+            <div class="value">$2,800.00</div>
+          </div>
+        </div>
+        <div class="note">Tap feedback is instant. Server update follows.</div>
+      </div>
+    </section>
+
+    <section class="list">
+      <div class="row">
+        <div>
+          <strong>Phone bill</strong>
+          <div class="note">Recurring match</div>
+        </div>
+        <div>$55.00</div>
+        <div><span class="tag">projected</span></div>
+        <div><button class="btn">Post</button></div>
+      </div>
+      <div class="row">
+        <div>
+          <strong>Market run</strong>
+          <div class="note">Imported</div>
+        </div>
+        <div>$76.42</div>
+        <div><span class="tag">posted</span></div>
+        <div><button class="btn secondary">Edit</button></div>
+      </div>
+      <div class="row">
+        <div>
+          <strong>Streaming</strong>
+          <div class="note">Needs match</div>
+        </div>
+        <div>$12.99</div>
+        <div><span class="tag warn">review</span></div>
+        <div><button class="btn secondary">Link</button></div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top: 16px;">
+      <strong>Add recurring</strong>
+      <input class="input" value="Gym membership" aria-label="merchant">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <input class="input" value="49.00" aria-label="amount">
+        <input class="input" value="Monthly" aria-label="frequency">
+      </div>
+      <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+        <button class="btn">Add recurring</button>
+        <button class="btn secondary">Cancel</button>
+      </div>
+      <div class="note">Instant UI update. Quiet sync later.</div>
+    </section>
+  </div>
+</body>
+</html>

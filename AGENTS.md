@@ -5,3 +5,4 @@
 - Keep `.env` and `.env.local` pointing at Supabase (no Neon leftovers).
 - Point Vercel Preview/Development env vars at staging Supabase to avoid prod access.
 - Treat `docs/PROJECT_PROGRESS.md` as the running backlog; update it (and relevant docs) whenever scope or rollout steps change.
+- Follow the UI design bible in `docs/DESIGN_BIBLE.md` for any visual or interaction changes.

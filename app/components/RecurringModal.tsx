@@ -121,24 +121,25 @@ export function RecurringModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-        <h2 className="text-xl font-semibold mb-4">Link to Recurring Schedule</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4 py-8 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-xl border border-line bg-white p-6 shadow-xl">
+        <h2 className="text-lg font-semibold mb-1">Link a recurring schedule</h2>
+        <p className="text-xs text-monday-3pm mb-4">Make it official. Quietly.</p>
 
         {mode === 'choose' && (
           <div className="space-y-4">
-            <p className="text-sm text-gray-600">
-              Link this transaction to a recurring schedule. It will become the posted instance for this month.
+            <p className="text-sm text-monday-3pm">
+              Link this transaction to a schedule. It becomes the posted instance for this month.
             </p>
 
             <div className="flex flex-col gap-3">
               {existingDefinitions.length > 0 && (
                 <Button onClick={() => setMode('link')}>
-                  Link to existing schedule
+                  Link existing schedule
                 </Button>
               )}
               <Button onClick={() => setMode('create')} variant="secondary">
-                Create new schedule
+                Create schedule
               </Button>
             </div>
 
@@ -151,15 +152,15 @@ export function RecurringModal({
         {mode === 'link' && (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">
-                Select existing recurring schedule:
+              <label className="mono-label block mb-2">
+                Select a schedule
               </label>
               <select
                 value={selectedDefinitionId}
                 onChange={(e) => setSelectedDefinitionId(e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2"
+                className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
               >
-                <option value="">Choose...</option>
+                <option value="">Choose</option>
                 {existingDefinitions.map((def) => {
                   const label = def.displayLabel && def.displayLabel !== def.merchantLabel
                     ? `${def.displayLabel} (match: ${def.merchantLabel})`
@@ -187,7 +188,7 @@ export function RecurringModal({
         {mode === 'create' && (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Merchant label (for matching) *</label>
+              <label className="mono-label block mb-1">merchant label (for matching) *</label>
               <input
                 type="text"
                 value={merchantLabel}
@@ -196,39 +197,39 @@ export function RecurringModal({
                   setMerchantLabel(value)
                   setDisplayLabel(prev => (prev === '' || prev === merchantLabel ? value : prev))
                 }}
-                className="w-full border border-gray-300 rounded px-3 py-2"
+                className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                 placeholder="e.g., Netflix"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Display label (optional)</label>
+              <label className="mono-label block mb-1">display label (optional)</label>
               <input
                 type="text"
                 value={displayLabel}
                 onChange={(e) => setDisplayLabel(e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2"
+                className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                 placeholder="e.g., Paramount Plus"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Nominal amount *</label>
+              <label className="mono-label block mb-1">nominal amount *</label>
               <input
                 type="text"
                 value={nominalAmount}
                 onChange={(e) => setNominalAmount(e.target.value)}
                 inputMode="decimal"
-                className="w-full border border-gray-300 rounded px-3 py-2"
+                className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Frequency *</label>
+              <label className="mono-label block mb-1">frequency *</label>
               <select
                 value={frequency}
                 onChange={(e) => setFrequency(e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2"
+                className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
               >
                 <option value="monthly">Monthly</option>
                 <option value="weekly">Weekly</option>
@@ -239,25 +240,25 @@ export function RecurringModal({
 
             {frequency === 'monthly' && (
               <div>
-                <label className="block text-sm font-medium mb-1">Day of month</label>
+                <label className="mono-label block mb-1">day of month</label>
                 <input
                   type="number"
                   value={dayOfMonth}
                   onChange={(e) => setDayOfMonth(e.target.value)}
                   min="1"
                   max="31"
-                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                 />
               </div>
             )}
 
             {(frequency === 'weekly' || frequency === 'biweekly') && (
               <div>
-                <label className="block text-sm font-medium mb-1">Day of week</label>
+                <label className="mono-label block mb-1">day of week</label>
                 <select
                   value={dayOfWeek}
                   onChange={(e) => setDayOfWeek(e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                 >
                   <option value="1">Monday</option>
                   <option value="2">Tuesday</option>
@@ -273,25 +274,25 @@ export function RecurringModal({
             {frequency === 'twice_monthly' && (
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <label className="block text-sm font-medium mb-1">First day</label>
+                  <label className="mono-label block mb-1">first day</label>
                   <input
                     type="number"
                     value={firstDay}
                     onChange={(e) => setFirstDay(e.target.value)}
                     min="1"
                     max="31"
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                   />
                 </div>
                 <div className="flex-1">
-                  <label className="block text-sm font-medium mb-1">Second day</label>
+                  <label className="mono-label block mb-1">second day</label>
                   <input
                     type="number"
                     value={secondDay}
                     onChange={(e) => setSecondDay(e.target.value)}
                     min="1"
                     max="31"
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                   />
                 </div>
               </div>

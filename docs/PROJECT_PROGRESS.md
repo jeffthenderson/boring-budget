@@ -89,6 +89,15 @@ Legend: [x] done  [~] partial  [ ] not started
 ## Someday / Maybe
 - Auto-categorize transactions (history first, LLM fallback)
 
+## Design refresh
+- [ ] Full visual refresh with snappy interaction focus (see `docs/DESIGN_REFRESH_PLAN.md`)
+
+## Snappy UX plan (perceived speed)
+- [ ] Optimistic UI for recurring suggestion add (hide row immediately, show inline success, rollback on error)
+- [ ] Client-side cache for accounts and recurring suggestions (render cached data first, refresh in background)
+- [ ] Month navigation: prefetch prev/next period, keep stale UI until new data arrives, add immediate loading feedback
+- [ ] Inline error handling for optimistic actions (toast plus restore action)
+
 ## Ops + doc follow-ups
 - [ ] Verify production auth flows end-to-end (invite, password reset, MFA enrollment)
 - [ ] Add tests or manual smoke checks for CSV import dedupe + recurring match linking

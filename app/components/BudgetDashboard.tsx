@@ -1210,13 +1210,13 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
     <div className="space-y-6">
       {llmProgress.active && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-md rounded-lg border-2 border-dark bg-white p-5 shadow-lg">
-            <div className="text-sm uppercase tracking-wider text-dark font-medium">
+          <div className="w-full max-w-md rounded-lg border border-line bg-white p-5 shadow-lg">
+            <div className="text-sm font-semibold text-foreground">
               Categorizing with GPT-5-mini
             </div>
-            <div className="mt-3 h-2 w-full overflow-hidden rounded bg-cubicle-taupe">
+            <div className="mt-3 h-2 w-full overflow-hidden rounded bg-line">
               <div
-                className="h-full bg-dark transition-[width] duration-300"
+                className="h-full bg-accent transition-[width] duration-300"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -1236,8 +1236,8 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
       )}
       {incomeMatchOpen && incomeMatchTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-2xl rounded-lg border-2 border-dark bg-white p-5 shadow-lg">
-            <div className="text-sm uppercase tracking-wider text-dark font-medium">
+          <div className="w-full max-w-2xl rounded-lg border border-line bg-white p-5 shadow-lg">
+            <div className="text-sm font-semibold text-foreground">
               Match Income to Import
             </div>
             <div className="mt-2 text-sm text-monday-3pm">
@@ -1253,20 +1253,20 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                 value={incomeMatchSearch}
                 onChange={(e) => setIncomeMatchSearch(e.target.value)}
                 placeholder="Search description or amount"
-                className="w-full border-2 border-cubicle-taupe bg-white px-3 py-2 text-sm"
+                className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
               />
             </div>
 
             {incomeMatchError && (
-              <div className="mt-3 text-sm text-red-700">{incomeMatchError}</div>
+              <div className="mt-3 text-sm text-rose-600">{incomeMatchError}</div>
             )}
 
-            <div className="mt-4 space-y-2 max-h-72 overflow-y-auto border-t border-cubicle-taupe pt-3">
+            <div className="mt-4 space-y-2 max-h-72 overflow-y-auto border-t border-line pt-3">
               {filteredIncomeMatches.length === 0 ? (
                 <div className="text-sm text-monday-3pm">No matches found.</div>
               ) : (
                 filteredIncomeMatches.map(candidate => (
-                  <div key={candidate.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 border-b border-cubicle-taupe pb-2">
+                  <div key={candidate.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 border-b border-line pb-2">
                     <div>
                       <div className="text-sm">
                         {candidate.date} · {formatCurrency(candidate.amount)} · {candidate.description}
@@ -1281,7 +1281,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                       onClick={() => handleMatchIncomeCandidate(candidate.id)}
                       disabled={incomeMatchLinking}
                     >
-                      {incomeMatchLinking ? 'LINKING...' : 'LINK'}
+                      {incomeMatchLinking ? 'Linking...' : 'Link'}
                     </Button>
                   </div>
                 ))
@@ -1290,10 +1290,10 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
 
             <div className="mt-4 flex flex-wrap gap-2 justify-end">
               <Button variant="secondary" onClick={handlePostIncomeWithoutMatch} disabled={incomeMatchLinking}>
-                {incomeMatchLinking ? 'POSTING...' : 'POST WITHOUT MATCH'}
+                {incomeMatchLinking ? 'Posting...' : 'Post without match'}
               </Button>
               <Button variant="secondary" onClick={closeIncomeMatch} disabled={incomeMatchLinking}>
-                CANCEL
+                Cancel
               </Button>
             </div>
           </div>
@@ -1301,8 +1301,8 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
       )}
       {recurringMatchOpen && recurringMatchTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-2xl rounded-lg border-2 border-dark bg-white p-5 shadow-lg">
-            <div className="text-sm uppercase tracking-wider text-dark font-medium">
+          <div className="w-full max-w-2xl rounded-lg border border-line bg-white p-5 shadow-lg">
+            <div className="text-sm font-semibold text-foreground">
               Match Recurring to Transaction
             </div>
             <div className="mt-2 text-sm text-monday-3pm">
@@ -1318,20 +1318,20 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                 value={recurringMatchSearch}
                 onChange={(e) => setRecurringMatchSearch(e.target.value)}
                 placeholder="Search description or amount"
-                className="w-full border-2 border-cubicle-taupe bg-white px-3 py-2 text-sm"
+                className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
               />
             </div>
 
             {recurringMatchError && (
-              <div className="mt-3 text-sm text-red-700">{recurringMatchError}</div>
+              <div className="mt-3 text-sm text-rose-600">{recurringMatchError}</div>
             )}
 
-            <div className="mt-4 space-y-2 max-h-72 overflow-y-auto border-t border-cubicle-taupe pt-3">
+            <div className="mt-4 space-y-2 max-h-72 overflow-y-auto border-t border-line pt-3">
               {filteredRecurringMatches.length === 0 ? (
                 <div className="text-sm text-monday-3pm">No matches found.</div>
               ) : (
                 filteredRecurringMatches.map(candidate => (
-                  <div key={candidate.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 border-b border-cubicle-taupe pb-2">
+                  <div key={candidate.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 border-b border-line pb-2">
                     <div>
                       <div className="text-sm">
                         {candidate.date} · {formatCurrency(candidate.amount)} · {candidate.description}
@@ -1346,7 +1346,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                       onClick={() => handleMatchRecurringCandidate(candidate.id)}
                       disabled={recurringMatchLinking}
                     >
-                      {recurringMatchLinking ? 'LINKING...' : 'LINK'}
+                      {recurringMatchLinking ? 'Linking...' : 'Link'}
                     </Button>
                   </div>
                 ))
@@ -1355,7 +1355,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
 
             <div className="mt-4 flex flex-wrap gap-2 justify-end">
               <Button variant="secondary" onClick={closeRecurringMatch} disabled={recurringMatchLinking}>
-                CANCEL
+                Cancel
               </Button>
             </div>
           </div>
@@ -1372,20 +1372,20 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
               variant="secondary"
               onClick={() => router.push(`/?year=${prevPeriod.year}&month=${prevPeriod.month}`)}
             >
-              ← PREV
+              Prev
             </Button>
             <Button
               variant="secondary"
               onClick={() => router.push(`/?year=${nextPeriod.year}&month=${nextPeriod.month}`)}
             >
-              NEXT →
+              Next →
             </Button>
             <Button
               variant="secondary"
               onClick={() => router.push('/')}
               disabled={isCurrentPeriod}
             >
-              CURRENT
+              Current
             </Button>
             <Button
               variant="secondary"
@@ -1393,10 +1393,10 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
               disabled={isTogglingPeriod}
             >
               {isTogglingPeriod
-                ? 'UPDATING...'
+                ? 'Updating...'
                 : period.status === 'open'
-                  ? 'LOCK MONTH'
-                  : 'UNLOCK MONTH'}
+                  ? 'Lock month'
+                  : 'Unlock month'}
             </Button>
           </div>
         </div>
@@ -1408,13 +1408,13 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
           <button
             type="button"
             onClick={() => setShowIncomePanel(prev => !prev)}
-            className="md:hidden w-full border-2 border-cubicle-taupe px-3 py-2 flex items-center justify-between text-left"
+            className="md:hidden w-full rounded-md border border-line bg-white px-3 py-2 flex items-center justify-between text-left transition hover:bg-surface-muted"
           >
             <div>
-              <div className="text-xs uppercase text-monday-3pm">Total income</div>
+              <div className="mono-label">Total income</div>
               <div className="text-lg font-medium">{formatCurrency(anticipatedIncome)}</div>
             </div>
-            <div className="text-xs uppercase text-monday-3pm">
+            <div className="mono-label">
               {showIncomePanel ? 'Hide' : 'Show'}
             </div>
           </button>
@@ -1441,10 +1441,10 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                 value={incomeDate}
                 onChange={setIncomeDate}
               />
-              <Button onClick={handleAddIncome}>ADD INCOME</Button>
+              <Button onClick={handleAddIncome}>Add income</Button>
             </div>
 
-            <div className="border-t-2 border-cubicle-taupe pt-4">
+            <div className="border-t border-line pt-4">
               {incomeTransactions.length === 0 ? (
                 <div className="text-sm text-monday-3pm py-2">
                   No income yet. (Project it, then make it real.)
@@ -1453,7 +1453,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                 incomeTransactions.map((item: any) => (
                   <div
                     key={item.id}
-                    className="flex flex-col md:flex-row md:justify-between md:items-center gap-2 py-2 border-b border-cubicle-taupe"
+                    className="flex flex-col md:flex-row md:justify-between md:items-center gap-2 py-2 border-b border-line"
                   >
                     <div>
                       <span className="font-medium">{item.description}</span>
@@ -1463,7 +1463,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <span>{formatCurrency(Math.abs(item.amount))}</span>
-                      <span className={`px-2 py-1 text-xs uppercase ${item.status === 'posted' ? 'bg-ceiling-grey' : 'bg-background'}`}>
+                      <span className="rounded-full bg-accent-soft px-2 py-1 mono-label">
                         {item.status}
                       </span>
                       {item.status === 'projected' && (
@@ -1471,14 +1471,14 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                           onClick={() => handlePostIncome(item)}
                           disabled={incomeMatchLoading && incomeMatchLoadingId === item.id}
                         >
-                          {incomeMatchLoading && incomeMatchLoadingId === item.id ? 'MATCHING...' : 'POST'}
+                          {incomeMatchLoading && incomeMatchLoadingId === item.id ? 'Matching...' : 'Post'}
                         </Button>
                       )}
                       <Button
                         variant="danger"
                         onClick={() => deleteTransaction(item.id)}
                       >
-                        DELETE
+                        Delete
                       </Button>
                     </div>
                   </div>
@@ -1486,7 +1486,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
               )}
             </div>
 
-            <div className="text-lg font-medium pt-4 border-t-2 border-dark">
+            <div className="text-lg font-medium pt-4 border-t border-line">
               Total: {formatCurrency(anticipatedIncome)}
             </div>
           </div>
@@ -1499,13 +1499,13 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
           <button
             type="button"
             onClick={() => setShowPreallocationsPanel(prev => !prev)}
-            className="md:hidden w-full border-2 border-cubicle-taupe px-3 py-2 flex items-center justify-between text-left"
+            className="md:hidden w-full rounded-md border border-line bg-white px-3 py-2 flex items-center justify-between text-left transition hover:bg-surface-muted"
           >
             <div>
-              <div className="text-xs uppercase text-monday-3pm">Goal budget</div>
+              <div className="mono-label">Goal budget</div>
               <div className="text-lg font-medium">{formatCurrency(preallocations.goalBudget)}</div>
             </div>
-            <div className="text-xs uppercase text-monday-3pm">
+            <div className="mono-label">
               {showPreallocationsPanel ? 'Hide' : 'Show'}
             </div>
           </button>
@@ -1513,19 +1513,19 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
           <div className={`${showPreallocationsPanel ? 'block' : 'hidden'} md:block`}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <div className="text-xs uppercase text-monday-3pm">Charity ({settings.charityPercent}%)</div>
+                <div className="mono-label">Charity ({settings.charityPercent}%)</div>
                 <div className="text-lg">{formatCurrency(preallocations.charity)}</div>
               </div>
               <div>
-                <div className="text-xs uppercase text-monday-3pm">Retirement</div>
+                <div className="mono-label">Retirement</div>
                 <div className="text-lg">{formatCurrency(preallocations.retirement)}</div>
               </div>
               <div>
-                <div className="text-xs uppercase text-monday-3pm">Other Savings</div>
+                <div className="mono-label">Other Savings</div>
                 <div className="text-lg">{formatCurrency(preallocations.otherSavings)}</div>
               </div>
-              <div className="border-2 border-dark p-3">
-                <div className="text-xs uppercase text-monday-3pm">Goal Budget</div>
+              <div className="border border-line p-3">
+                <div className="mono-label">Goal Budget</div>
                 <div className="text-lg font-medium">{formatCurrency(preallocations.goalBudget)}</div>
               </div>
             </div>
@@ -1539,20 +1539,20 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
           <button
             type="button"
             onClick={() => setShowCategoryBudgetsPanel(prev => !prev)}
-            className="md:hidden w-full border-2 border-cubicle-taupe px-3 py-2 flex items-center justify-between text-left"
+            className="md:hidden w-full rounded-md border border-line bg-white px-3 py-2 flex items-center justify-between text-left transition hover:bg-surface-muted"
           >
             <div>
-              <div className="text-xs uppercase text-monday-3pm">Sum of budgets</div>
+              <div className="mono-label">Sum of budgets</div>
               <div className="text-lg font-medium">{formatCurrency(totalBudgeted)}</div>
             </div>
-            <div className="text-xs uppercase text-monday-3pm">
+            <div className="mono-label">
               {showCategoryBudgetsPanel ? 'Hide' : 'Show'}
             </div>
           </button>
 
           <div className={`${showCategoryBudgetsPanel ? 'block' : 'hidden'} md:block space-y-2`}>
             {budgetSetupLocked && (
-              <div className="border-2 border-dark bg-ceiling-grey p-3 text-sm text-dark space-y-2">
+              <div className="border border-line bg-surface-muted p-3 text-sm text-foreground space-y-2">
                 <div>
                   Set up recurring expenses first so your available budget reflects what’s already committed.
                 </div>
@@ -1561,19 +1561,19 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                     variant="secondary"
                     onClick={() => router.push('/recurring')}
                   >
-                    SET UP RECURRING
+                    Set up recurring
                   </Button>
                   <Button
                     variant="secondary"
                     onClick={() => setAllowBudgetSetup(true)}
                   >
-                    CONTINUE WITHOUT RECURRING
+                    Continue without recurring
                   </Button>
                 </div>
               </div>
             )}
-            <div className="border-2 border-cubicle-taupe bg-background p-3 flex flex-wrap items-center justify-between gap-3">
-              <div className="text-sm text-dark">
+            <div className="border border-line bg-surface-muted p-3 flex flex-wrap items-center justify-between gap-3">
+              <div className="text-sm text-foreground">
                 Need a starting point? Suggest budgets from the last 3 months of posted spending.
                 Recurring categories use this month's recurring totals.
               </div>
@@ -1582,7 +1582,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                 onClick={handleSuggestBudgets}
                 disabled={budgetSetupLocked || isSuggestingBudgets}
               >
-                {isSuggestingBudgets ? 'SUGGESTING...' : 'SUGGEST BUDGETS'}
+                {isSuggestingBudgets ? 'Suggesting...' : 'Suggest budgets'}
               </Button>
             </div>
             {BUDGET_CATEGORIES.map(category => {
@@ -1590,7 +1590,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
               const amount = budget?.amountBudgeted || 0
 
               return (
-                <div key={category} className="grid grid-cols-1 sm:grid-cols-[2fr_1fr_auto] gap-2 items-start sm:items-center py-2 border-b border-cubicle-taupe">
+                <div key={category} className="grid grid-cols-1 sm:grid-cols-[2fr_1fr_auto] gap-2 items-start sm:items-center py-2 border-b border-line">
                   <div className="text-sm">{category}</div>
                   <Input
                     type="text"
@@ -1600,13 +1600,13 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                     disabled={budgetSetupLocked}
                   />
                   <Button onClick={() => handleUpdateBudget(category)} disabled={budgetSetupLocked}>
-                    UPDATE
+                    Update
                   </Button>
                 </div>
               )
             })}
 
-            <div className="pt-4 border-t-2 border-dark space-y-2">
+            <div className="pt-4 border-t border-line space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Sum of Budgets:</span>
                 <span className="font-medium">{formatCurrency(totalBudgeted)}</span>
@@ -1617,7 +1617,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
               </div>
               <div className="flex justify-between text-sm font-medium">
                 <span>Difference:</span>
-                <span className={budgetVsGoal > 0 ? 'text-red-700' : 'text-green-700'}>
+                <span className={budgetVsGoal > 0 ? 'text-rose-600' : 'text-emerald-600'}>
                   {formatCurrency(budgetVsGoal)} {budgetVsGoal > 0 ? '(Over)' : '(Under)'}
                 </span>
               </div>
@@ -1635,7 +1635,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
               </div>
               <div className="flex justify-between text-sm font-medium">
                 <span>Diff vs Available:</span>
-                <span className={budgetVsAvailableAfterRecurring > 0 ? 'text-red-700' : 'text-green-700'}>
+                <span className={budgetVsAvailableAfterRecurring > 0 ? 'text-rose-600' : 'text-emerald-600'}>
                   {formatCurrency(budgetVsAvailableAfterRecurring)} {budgetVsAvailableAfterRecurring > 0 ? '(Over)' : '(Under)'}
                 </span>
               </div>
@@ -1693,14 +1693,14 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                 </div>,
                 <div
                   key={`${c.category}-diff`}
-                  className={`text-right tabular-nums whitespace-nowrap ${c.difference > 0 ? 'text-red-700' : 'text-green-700'}`}
+                  className={`text-right tabular-nums whitespace-nowrap ${c.difference > 0 ? 'text-rose-600' : 'text-emerald-600'}`}
                 >
                   {formatCurrencyRounded(c.difference)}
                 </div>
               ]
             }),
             [
-              <strong key="total">TOTAL</strong>,
+              <strong key="total">Total</strong>,
               <strong key="budgeted" className="text-right tabular-nums whitespace-nowrap">
                 {formatCurrencyRounded(totalBudgeted)}
               </strong>,
@@ -1709,14 +1709,14 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
               </strong>,
               <strong
                 key="diff"
-                className={`text-right tabular-nums whitespace-nowrap ${totalDifference > 0 ? 'text-red-700' : 'text-green-700'}`}
+                className={`text-right tabular-nums whitespace-nowrap ${totalDifference > 0 ? 'text-rose-600' : 'text-emerald-600'}`}
               >
                 {formatCurrencyRounded(totalDifference)}
               </strong>
             ]
           ]}
           rowClassNames={[
-            ...categoryData.map(c => (budgetTableSelection === c.category ? 'bg-ceiling-grey' : '')),
+            ...categoryData.map(c => (budgetTableSelection === c.category ? 'bg-surface-muted' : '')),
             ''
           ]}
         />
@@ -1735,18 +1735,18 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
             <button
               type="button"
               onClick={() => setShowAddTransactionForm(prev => !prev)}
-              className="w-full border-2 border-cubicle-taupe px-3 py-2 flex items-center justify-between text-left"
+              className="w-full rounded-md border border-line bg-white px-3 py-2 flex items-center justify-between text-left transition hover:bg-surface-muted"
             >
-              <span className="text-xs uppercase text-monday-3pm">Add transaction</span>
-              <span className="text-xs uppercase text-monday-3pm">{showAddTransactionForm ? 'Hide' : 'Show'}</span>
+              <span className="mono-label">Add transaction</span>
+              <span className="mono-label">{showAddTransactionForm ? 'Hide' : 'Show'}</span>
             </button>
             <button
               type="button"
               onClick={() => setShowTransactionFilters(prev => !prev)}
-              className="w-full border-2 border-cubicle-taupe px-3 py-2 flex items-center justify-between text-left"
+              className="w-full rounded-md border border-line bg-white px-3 py-2 flex items-center justify-between text-left transition hover:bg-surface-muted"
             >
-              <span className="text-xs uppercase text-monday-3pm">Filters & actions</span>
-              <span className="text-xs uppercase text-monday-3pm">{showTransactionFilters ? 'Hide' : 'Show'}</span>
+              <span className="mono-label">Filters & actions</span>
+              <span className="mono-label">{showTransactionFilters ? 'Hide' : 'Show'}</span>
             </button>
           </div>
 
@@ -1769,13 +1769,13 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
               placeholder="0.00"
             />
             <div className="flex flex-col gap-1">
-              <label className="text-xs uppercase tracking-wider text-dark font-medium">
+              <label className="mono-label">
                 Category
               </label>
               <select
                 value={transactionCategory}
                 onChange={(e) => setTransactionCategory(e.target.value)}
-                className="border-2 border-cubicle-taupe bg-white px-3 py-2 text-dark focus:outline-none focus:border-dark"
+                className="rounded-md border border-line bg-white px-3 py-2 text-sm text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
               >
                 {TRANSACTION_CATEGORIES.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
@@ -1788,20 +1788,20 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
               value={transactionDate}
               onChange={setTransactionDate}
             />
-            <Button type="submit">ADD</Button>
+            <Button type="submit">Add</Button>
           </form>
 
           <div
-            className={`flex flex-col md:flex-row md:items-center flex-wrap gap-4 border-y-2 border-cubicle-taupe py-3 ${
+            className={`flex flex-col md:flex-row md:items-center flex-wrap gap-4 border-y border-line py-3 ${
               showTransactionFilters ? '' : 'hidden md:flex'
             }`}
           >
             <div className="flex gap-2 items-center">
-              <label className="text-xs uppercase">Filter Category:</label>
+              <label className="mono-label">Filter category</label>
               <select
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
-                className="border-2 border-cubicle-taupe bg-white px-2 py-1 text-sm"
+                className="rounded-md border border-line bg-white px-2 py-1 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
               >
                 <option value="all">All</option>
                 {TRANSACTION_CATEGORIES.map(cat => (
@@ -1810,11 +1810,11 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
               </select>
             </div>
             <div className="flex gap-2 items-center">
-              <label className="text-xs uppercase">Filter Status:</label>
+              <label className="mono-label">Filter status</label>
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="border-2 border-cubicle-taupe bg-white px-2 py-1 text-sm"
+                className="rounded-md border border-line bg-white px-2 py-1 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
               >
                 <option value="all">All</option>
                 <option value="projected">Projected</option>
@@ -1826,40 +1826,40 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                 variant="secondary"
                 onClick={() => setShowIgnored(prev => !prev)}
               >
-                {showIgnored ? 'HIDE IGNORED' : 'SHOW IGNORED'}
+                {showIgnored ? 'Hide ignored' : 'Show ignored'}
               </Button>
             </div>
             <div className="flex flex-wrap gap-2 md:ml-auto">
               <Button
                 variant={multiSelectMode ? 'primary' : 'secondary'}
                 onClick={handleToggleMultiSelect}
-                className={multiSelectMode ? 'bg-dark text-white hover:bg-dark' : ''}
+                className={multiSelectMode ? 'shadow-sm' : ''}
               >
-                {multiSelectMode ? 'DONE SELECTING' : 'SELECT MULTIPLE'}
+                {multiSelectMode ? 'Done selecting' : 'Select multiple'}
               </Button>
               <Button
                 variant="secondary"
                 onClick={handleMatchRecurring}
                 disabled={isMatchingRecurring}
               >
-                {isMatchingRecurring ? 'MATCHING...' : 'MATCH RECURRING'}
+                {isMatchingRecurring ? 'Matching...' : 'Match recurring'}
               </Button>
               <Button
                 variant="secondary"
                 onClick={handleLLMCategorize}
                 disabled={isCategorizingWithLLM}
               >
-                {isCategorizingWithLLM ? 'CATEGORIZING...' : 'LLM CATEGORIZE'}
+                {isCategorizingWithLLM ? 'Categorizing...' : 'LLM categorize'}
               </Button>
             </div>
           </div>
 
           {/* Bulk Actions Toolbar */}
           {selectedTransactions.size > 0 && (
-            <div className="bg-ceiling-grey border-2 border-dark p-4 flex flex-col md:flex-row md:items-center flex-wrap gap-4">
+            <div className="bg-surface-muted border border-line p-4 flex flex-col md:flex-row md:items-center flex-wrap gap-4">
               <div className="font-medium">{selectedTransactions.size} selected</div>
               <div className="flex gap-2 items-center">
-                <label className="text-xs uppercase">Assign Category:</label>
+                <label className="mono-label">Assign category</label>
                 <select
                   onChange={(e) => {
                     if (e.target.value) {
@@ -1867,7 +1867,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                       e.target.value = ''
                     }
                   }}
-                  className="border-2 border-cubicle-taupe bg-white px-2 py-1 text-sm"
+                  className="rounded-md border border-line bg-white px-2 py-1 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                   defaultValue=""
                 >
                   <option value="">Select...</option>
@@ -1877,26 +1877,26 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                 </select>
               </div>
               <Button variant="danger" onClick={handleBulkDelete}>
-                DELETE SELECTED
+                Delete selected
               </Button>
               <Button variant="secondary" onClick={() => setSelectedTransactions(new Set())}>
-                CLEAR SELECTION
+                Clear selection
               </Button>
             </div>
           )}
 
-          <div className={`hidden md:grid ${transactionGridCols} gap-4 items-center px-1 text-xs uppercase tracking-wider text-monday-3pm`}>
+          <div className={`hidden md:grid ${transactionGridCols} gap-4 items-center px-1 mono-label`}>
             {multiSelectMode && <div />}
-            <button type="button" onClick={() => handleSortChange('date')} className="text-left hover:text-dark">
+            <button type="button" onClick={() => handleSortChange('date')} className="text-left hover:text-foreground">
               Date{getSortIndicator('date')}
             </button>
-            <button type="button" onClick={() => handleSortChange('description')} className="text-left hover:text-dark">
+            <button type="button" onClick={() => handleSortChange('description')} className="text-left hover:text-foreground">
               Description{getSortIndicator('description')}
             </button>
-            <button type="button" onClick={() => handleSortChange('category')} className="text-left hover:text-dark">
+            <button type="button" onClick={() => handleSortChange('category')} className="text-left hover:text-foreground">
               Category{getSortIndicator('category')}
             </button>
-            <button type="button" onClick={() => handleSortChange('amount')} className="text-left hover:text-dark">
+            <button type="button" onClick={() => handleSortChange('amount')} className="text-left hover:text-foreground">
               Amount{getSortIndicator('amount')}
             </button>
           </div>
@@ -1961,17 +1961,17 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                 return (
                   <div
                     key={t.id}
-                    className={`border-b border-cubicle-taupe text-sm ${t.isIgnored ? 'opacity-60' : ''}`}
+                    className={`border-b border-line text-sm ${t.isIgnored ? 'opacity-60' : ''}`}
                   >
                     {showMobileDateHeader && (
-                      <div className="md:hidden pt-3 text-[10px] uppercase tracking-wider text-monday-3pm">
+                      <div className="md:hidden pt-3 mono-label">
                         {formatDateDisplay(t.date)}
                       </div>
                     )}
                     <div
                       className={`md:hidden flex items-center gap-3 py-2 ${
-                        !multiSelectMode ? 'cursor-pointer hover:bg-background' : ''
-                      } ${isSelected ? 'bg-ceiling-grey' : ''}`}
+                        !multiSelectMode ? 'cursor-pointer hover:bg-surface-muted' : ''
+                      } ${isSelected ? 'bg-surface-muted' : ''}`}
                       onClick={(e) => handleRowClick(t.id, index, e)}
                     >
                       {multiSelectMode && (
@@ -2013,7 +2013,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                         className="md:hidden pl-11 pb-2"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <div className="text-[10px] uppercase tracking-wider text-monday-3pm">Category</div>
+                        <div className="mono-label">Category</div>
                         <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {TRANSACTION_CATEGORIES.map(cat => {
                             const colors = getCategoryColor(cat)
@@ -2024,9 +2024,9 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                                 type="button"
                                 disabled={categoryDisabled}
                                 onClick={() => handleCategorySelection(t.id, cat)}
-                                className={`flex items-center gap-2 border-2 px-2 py-2 text-left text-xs ${
-                                  isActive ? 'border-dark' : 'border-cubicle-taupe'
-                                } ${categoryDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-background'}`}
+                                className={`flex items-center gap-2 rounded-md border px-2 py-2 text-left text-xs transition ${
+                                  isActive ? 'border-accent' : 'border-line'
+                                } ${categoryDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-surface-muted'}`}
                               >
                                 <span className={`flex h-7 w-7 items-center justify-center rounded-full ${colors.bg} ${colors.text}`}>
                                   {getMobileCategoryIcon(cat)}
@@ -2040,8 +2040,8 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                     )}
                     <div
                       className={`hidden md:grid ${transactionGridCols} gap-3 md:gap-4 items-start py-3 ${
-                        !multiSelectMode ? 'cursor-pointer hover:bg-background' : ''
-                      } ${isSelected ? 'bg-ceiling-grey' : ''}`}
+                        !multiSelectMode ? 'cursor-pointer hover:bg-surface-muted' : ''
+                      } ${isSelected ? 'bg-surface-muted' : ''}`}
                       onClick={(e) => handleRowClick(t.id, index, e)}
                     >
                       {multiSelectMode && (
@@ -2083,7 +2083,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                           />
                         ) : (
                           <span
-                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${categoryColors.bg} ${categoryColors.text}`}
+                            className={`inline-flex items-center px-3 py-1 rounded-full mono-chip ${categoryColors.bg} ${categoryColors.text}`}
                           >
                             {categoryLabel}
                           </span>
@@ -2100,18 +2100,18 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                         <div className="space-y-4">
                           {t.subDescription && (
                             <div>
-                              <div className="text-[10px] uppercase tracking-wider text-monday-3pm">Details</div>
-                              <div className="mt-1 text-sm text-dark">{t.subDescription}</div>
+                              <div className="mono-label">Details</div>
+                              <div className="mt-1 text-sm text-foreground">{t.subDescription}</div>
                             </div>
                           )}
                           <div>
-                            <div className="text-[10px] uppercase tracking-wider text-monday-3pm">Status</div>
-                            <div className="mt-1 text-sm text-dark">
+                            <div className="mono-label">Status</div>
+                            <div className="mt-1 text-sm text-foreground">
                               {statusLabel}{t.isIgnored ? ' · ignored' : ''}
                             </div>
                           </div>
                           <div>
-                            <div className="text-[10px] uppercase tracking-wider text-monday-3pm">Note</div>
+                            <div className="mono-label">Note</div>
                             <div className="mt-2">
                               <InlineNoteEditor
                                 transactionId={t.id}
@@ -2122,7 +2122,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                             </div>
                           </div>
                           <div>
-                            <div className="text-[10px] uppercase tracking-wider text-monday-3pm">Actions</div>
+                            <div className="mono-label">Actions</div>
                             <div className="mt-2 flex flex-wrap gap-2">
                               {t.status === 'projected' && (
                                 <Button
@@ -2140,8 +2140,8 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                                 >
                                   {(t.category === 'Income' && incomeMatchLoading && incomeMatchLoadingId === t.id)
                                     || (t.source === 'recurring' && recurringMatchLoading && recurringMatchLoadingId === t.id)
-                                    ? 'MATCHING...'
-                                    : 'POST'}
+                                    ? 'Matching...'
+                                    : 'Post'}
                                 </Button>
                               )}
                               {t.source === 'import' && (
@@ -2149,40 +2149,40 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                                   variant="secondary"
                                   onClick={() => handleIgnoreTransaction(t.id)}
                                 >
-                                  IGNORE LIKE THIS
+                                  Ignore like this
                                 </Button>
                               )}
                               <Button
                                 variant="secondary"
                                 onClick={() => handleToggleIgnore(t.id, !t.isIgnored)}
                               >
-                                {t.isIgnored ? 'UNIGNORE' : 'IGNORE'}
+                                {t.isIgnored ? 'Unignore' : 'Ignore'}
                               </Button>
                               <Button
                                 variant="secondary"
                                 onClick={() => toggleLinkCandidates(t.id, 'refund')}
                                 disabled={t.status !== 'posted' || t.isIgnored}
                               >
-                                LINK REFUND
+                                Link refund
                               </Button>
                               <Button
                                 variant="secondary"
                                 onClick={() => toggleLinkCandidates(t.id, 'reimbursement')}
                                 disabled={t.status !== 'posted' || t.isIgnored}
                               >
-                                LINK REIMBURSE
+                                Link reimbursement
                               </Button>
                               <Button
                                 variant="danger"
                                 onClick={() => deleteTransaction(t.id)}
                               >
-                                DELETE
+                                Delete
                               </Button>
                             </div>
                           </div>
                           {showAmazonOrder && (
                             <div>
-                              <div className="text-[10px] uppercase tracking-wider text-monday-3pm">Amazon</div>
+                              <div className="mono-label">Amazon</div>
                               <div className="mt-2 text-xs text-monday-3pm space-y-1">
                                 <div>
                                   Amazon order #{amazonOrder.amazonOrderId} · {formatDateDisplay(amazonOrder.orderDate)} · {formatCurrency(amazonOrder.orderTotal, amazonOrder.currency || 'CAD')}
@@ -2204,7 +2204,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                           )}
                           {hasLinkActivity && (
                             <div>
-                              <div className="text-[10px] uppercase tracking-wider text-monday-3pm">Links</div>
+                              <div className="mono-label">Links</div>
                               <div className="mt-2 text-xs text-monday-3pm space-y-2">
                                 {refundLinksFrom.length > 0 && (
                                   <div className="space-y-1">
@@ -2216,7 +2216,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                                         <button
                                           type="button"
                                           onClick={() => handleRemoveLink(link.id)}
-                                          className="text-xs uppercase text-monday-3pm hover:text-dark"
+                                          className="mono-label hover:text-foreground"
                                         >
                                           Unlink
                                         </button>
@@ -2234,7 +2234,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                                         <button
                                           type="button"
                                           onClick={() => handleRemoveLink(link.id)}
-                                          className="text-xs uppercase text-monday-3pm hover:text-dark"
+                                          className="mono-label hover:text-foreground"
                                         >
                                           Unlink
                                         </button>
@@ -2255,7 +2255,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                                         <button
                                           type="button"
                                           onClick={() => handleRemoveLink(link.id)}
-                                          className="text-xs uppercase text-monday-3pm hover:text-dark"
+                                          className="mono-label hover:text-foreground"
                                         >
                                           Unlink
                                         </button>
@@ -2276,7 +2276,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                                         <button
                                           type="button"
                                           onClick={() => handleRemoveLink(link.id)}
-                                          className="text-xs uppercase text-monday-3pm hover:text-dark"
+                                          className="mono-label hover:text-foreground"
                                         >
                                           Unlink
                                         </button>
@@ -2289,28 +2289,28 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                           )}
                         </div>
                         {refundPanelOpen && (
-                          <div className="mt-4 border-2 border-cubicle-taupe bg-white px-4 py-3 text-xs">
-                            <div className="font-medium uppercase tracking-wider text-monday-3pm">Refund search</div>
+                          <div className="mt-4 border border-line bg-white px-4 py-3 text-xs">
+                            <div className="mono-label">Refund search</div>
                             <div className="mt-1 text-monday-3pm">
                               {expenseValue < 0 ? 'Remaining refund balance' : 'Remaining to refund'}: {formatCurrency(refundRemaining)}
                             </div>
                             <div className="mt-2 text-monday-3pm">
                               Search and link specific transactions.
                             </div>
-                            <div className="mt-4 border-t border-cubicle-taupe pt-3">
-                              <div className="text-[10px] uppercase tracking-wider text-monday-3pm">Search</div>
+                            <div className="mt-4 border-t border-line pt-3">
+                              <div className="mono-label">Search</div>
                               <input
                                 type="text"
                                 placeholder="Search description, note, or amount"
                                 value={refundSearchQuery}
                                 onChange={(e) => handleLinkSearchChange(t.id, 'refund', e.target.value)}
-                                className="mt-1 w-full border-2 border-cubicle-taupe bg-white px-2 py-1 text-xs"
+                                className="mt-1 w-full rounded-md border border-line bg-white px-2 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                               />
                               {refundSearchLoading && (
                                 <div className="mt-2 text-monday-3pm">Searching...</div>
                               )}
                               {refundSearchError && (
-                                <div className="mt-2 text-red-700">{refundSearchError}</div>
+                                <div className="mt-2 text-rose-600">{refundSearchError}</div>
                               )}
                               {refundSearchQuery && !refundSearchLoading && refundSearchResults && refundSearchResults.length === 0 && (
                                 <div className="mt-2 text-monday-3pm">No matches found.</div>
@@ -2340,7 +2340,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                                               [`${t.id}:refund:${candidate.id}`]: e.target.value,
                                             }))
                                           }
-                                          className="w-28 border-2 border-cubicle-taupe bg-white px-2 py-1 text-xs"
+                                          className="w-28 rounded-md border border-line bg-white px-2 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                                         />
                                         <Button
                                           variant="secondary"
@@ -2351,7 +2351,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                                             || (candidate.remainingAmount ?? Math.abs(candidate.amount)) <= 0
                                           }
                                         >
-                                          {refundLinking ? 'LINKING...' : 'LINK REFUND'}
+                                          {refundLinking ? 'Linking...' : 'Link refund'}
                                         </Button>
                                       </div>
                                     </div>
@@ -2362,28 +2362,28 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                           </div>
                         )}
                         {reimbursementPanelOpen && (
-                          <div className="mt-4 border-2 border-cubicle-taupe bg-white px-4 py-3 text-xs">
-                            <div className="font-medium uppercase tracking-wider text-monday-3pm">Reimbursement search</div>
+                          <div className="mt-4 border border-line bg-white px-4 py-3 text-xs">
+                            <div className="mono-label">Reimbursement search</div>
                             <div className="mt-1 text-monday-3pm">
                               {expenseValue < 0 ? 'Remaining reimbursement balance' : 'Remaining to reimburse'}: {formatCurrency(reimbursementRemaining)}
                             </div>
                             <div className="mt-2 text-monday-3pm">
                               Search and link specific transactions.
                             </div>
-                            <div className="mt-4 border-t border-cubicle-taupe pt-3">
-                              <div className="text-[10px] uppercase tracking-wider text-monday-3pm">Search</div>
+                            <div className="mt-4 border-t border-line pt-3">
+                              <div className="mono-label">Search</div>
                               <input
                                 type="text"
                                 placeholder="Search description, note, or amount"
                                 value={reimbursementSearchQuery}
                                 onChange={(e) => handleLinkSearchChange(t.id, 'reimbursement', e.target.value)}
-                                className="mt-1 w-full border-2 border-cubicle-taupe bg-white px-2 py-1 text-xs"
+                                className="mt-1 w-full rounded-md border border-line bg-white px-2 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                               />
                               {reimbursementSearchLoading && (
                                 <div className="mt-2 text-monday-3pm">Searching...</div>
                               )}
                               {reimbursementSearchError && (
-                                <div className="mt-2 text-red-700">{reimbursementSearchError}</div>
+                                <div className="mt-2 text-rose-600">{reimbursementSearchError}</div>
                               )}
                               {reimbursementSearchQuery && !reimbursementSearchLoading && reimbursementSearchResults && reimbursementSearchResults.length === 0 && (
                                 <div className="mt-2 text-monday-3pm">No matches found.</div>
@@ -2413,7 +2413,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                                               [`${t.id}:reimbursement:${candidate.id}`]: e.target.value,
                                             }))
                                           }
-                                          className="w-28 border-2 border-cubicle-taupe bg-white px-2 py-1 text-xs"
+                                          className="w-28 rounded-md border border-line bg-white px-2 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                                         />
                                         <Button
                                           variant="secondary"
@@ -2424,7 +2424,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                                             || (candidate.remainingAmount ?? Math.abs(candidate.amount)) <= 0
                                           }
                                         >
-                                          {reimbursementLinking ? 'LINKING...' : 'LINK REIMBURSE'}
+                                          {reimbursementLinking ? 'Linking...' : 'Link reimbursement'}
                                         </Button>
                                       </div>
                                     </div>

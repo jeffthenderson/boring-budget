@@ -24,14 +24,14 @@ export default async function Home({
   const settings = await getPreallocationSettings()
 
   return (
-    <div className="min-h-screen p-4 md:p-8">
+    <div className="min-h-screen max-w-6xl mx-auto p-4 md:p-8">
       <TopNav showBrand={false} />
-      <header className="mb-8 border-b-4 border-dark pb-4">
-        <h1 className="text-2xl uppercase tracking-widest font-medium text-dark mb-2">
+      <header className="mb-8 border-b border-line pb-4">
+        <h1 className="text-3xl font-semibold text-foreground mb-2">
           Boring Budget
         </h1>
         <p className="text-sm text-monday-3pm">
-          Budget like nobody's watching. (They're not.)
+          Budget like nobody is watching. They are not.
         </p>
       </header>
 

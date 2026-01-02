@@ -15,13 +15,13 @@ export function Loading() {
   }, [])
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
+    <div className="flex min-h-screen items-center justify-center px-6">
       <div className="text-center">
-        <div className="text-monday-3pm text-base mb-2">{message}</div>
-        <div className="flex gap-1 justify-center">
-          <div className="w-2 h-2 bg-cubicle-taupe animate-pulse"></div>
-          <div className="w-2 h-2 bg-cubicle-taupe animate-pulse delay-75"></div>
-          <div className="w-2 h-2 bg-cubicle-taupe animate-pulse delay-150"></div>
+        <div className="text-sm text-monday-3pm">{message}</div>
+        <div className="mt-3 flex justify-center gap-2">
+          <div className="h-2 w-2 rounded-full bg-line animate-pulse"></div>
+          <div className="h-2 w-2 rounded-full bg-line animate-pulse delay-75"></div>
+          <div className="h-2 w-2 rounded-full bg-accent animate-pulse delay-150"></div>
         </div>
       </div>
     </div>

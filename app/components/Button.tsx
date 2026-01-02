@@ -13,13 +13,13 @@ export function Button({
   disabled?: boolean
   className?: string
 }) {
-  const baseStyles = 'px-4 py-2 border-2 font-sans uppercase tracking-wide text-sm font-medium transition-colors'
+  const baseStyles = 'inline-flex items-center justify-center gap-2 rounded-md border px-4 py-2 text-[12px] font-mono uppercase tracking-[0.08em] transition duration-150 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent active:translate-y-[1px] active:scale-[0.99]'
 
   const variantStyles = {
-    primary: 'border-dark bg-white text-dark hover:bg-ceiling-grey',
-    secondary: 'border-cubicle-taupe bg-white text-dark hover:bg-background',
-    danger: 'border-red-700 bg-white text-red-700 hover:bg-red-50',
-    outline: 'border-dark bg-white text-dark hover:bg-background',
+    primary: 'border-[color:var(--accent)] bg-[color:var(--accent)] text-white shadow-sm hover:bg-[color:var(--accent-strong)] hover:border-[color:var(--accent-strong)]',
+    secondary: 'border-line bg-white text-foreground hover:bg-accent-soft',
+    danger: 'border-[color:var(--danger)] bg-[color:var(--danger)] text-white hover:bg-[color:var(--danger-strong)]',
+    outline: 'border-line bg-transparent text-foreground hover:bg-accent-soft',
   }
 
   return (
@@ -27,7 +27,7 @@ export function Button({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`${baseStyles} ${variantStyles[variant]} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
+      className={`${baseStyles} ${variantStyles[variant]} ${disabled ? 'opacity-60 cursor-not-allowed pointer-events-none' : ''} ${className}`}
     >
       {children}
     </button>

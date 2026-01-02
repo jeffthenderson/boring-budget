@@ -233,21 +233,21 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-8">
+    <div className="min-h-screen max-w-6xl mx-auto p-4 md:p-8">
       <TopNav />
       <header className="mb-8">
-        <h1 className="text-2xl uppercase tracking-widest font-medium text-dark mb-2">
-          Settings & Admin
+        <h1 className="text-2xl font-semibold text-foreground mb-2">
+          Settings
         </h1>
         <p className="text-sm text-monday-3pm">
-          Configure your monthly pre-allocations and admin tools. (Riveting stuff.)
+          Configure pre-allocations and admin tools. Calmly.
         </p>
       </header>
 
-      <Card title="First-Run Setup">
+      <Card title="First-run setup">
         <form onSubmit={handleSave} className="space-y-4">
           <Input
-            label="Charity Percent"
+            label="Charity percent"
             type="text"
             inputMode="decimal"
             value={charityPercent}
@@ -256,7 +256,7 @@ export default function SettingsPage() {
           />
 
           <Input
-            label="Retirement Amount"
+            label="Retirement amount"
             type="text"
             inputMode="decimal"
             value={retirementAmount}
@@ -265,7 +265,7 @@ export default function SettingsPage() {
           />
 
           <Input
-            label="Other Savings Amount"
+            label="Other savings amount"
             type="text"
             inputMode="decimal"
             value={otherSavingsAmount}
@@ -274,18 +274,18 @@ export default function SettingsPage() {
           />
 
           <Button type="submit" disabled={saving}>
-            {saving ? 'SAVING...' : saved ? 'SAVED' : 'SAVE SETTINGS'}
+            {saving ? 'Saving...' : saved ? 'Saved' : 'Save settings'}
           </Button>
 
           {saved && (
             <div className="text-sm text-monday-3pm mt-2">
-              Changes saved. We're as thrilled as you are. (We're not.)
+              Saved. Quietly satisfying.
             </div>
           )}
         </form>
       </Card>
 
-      <Card title="Ignore Rules">
+      <Card title="Ignore rules">
         <form onSubmit={handleAddIgnoreRule} className="space-y-4">
           <Input
             label="Ignore transactions containing"
@@ -295,7 +295,7 @@ export default function SettingsPage() {
             required
           />
           <Button type="submit" disabled={savingIgnore}>
-            {savingIgnore ? 'ADDING...' : 'ADD IGNORE RULE'}
+            {savingIgnore ? 'Adding...' : 'Add ignore rule'}
           </Button>
         </form>
 
@@ -308,7 +308,7 @@ export default function SettingsPage() {
             ignoreRules.map(rule => (
               <div
                 key={rule.id}
-                className="grid grid-cols-1 md:grid-cols-[2fr_auto_auto] gap-3 items-start md:items-center py-2 border-b border-cubicle-taupe last:border-b-0"
+                className="grid grid-cols-1 md:grid-cols-[2fr_auto_auto] gap-3 items-start md:items-center py-2 border-b border-line last:border-b-0"
               >
                 <div>
                   <div className="font-medium">{rule.pattern}</div>
@@ -321,13 +321,13 @@ export default function SettingsPage() {
                     variant="secondary"
                     onClick={() => handleToggleIgnoreRule(rule.id, rule.active)}
                   >
-                    {rule.active ? 'DEACTIVATE' : 'ACTIVATE'}
+                    {rule.active ? 'Deactivate' : 'Activate'}
                   </Button>
                   <Button
                     variant="danger"
                     onClick={() => handleDeleteIgnoreRule(rule.id)}
                   >
-                    DELETE
+                    Delete
                   </Button>
                 </div>
               </div>
@@ -360,19 +360,19 @@ export default function SettingsPage() {
                     disabled={mfaLoading}
                     onClick={() => handleDisableMfa(factor.id)}
                   >
-                    {mfaLoading ? 'WORKING...' : 'DISABLE MFA'}
+                    {mfaLoading ? 'Working...' : 'Disable MFA'}
                   </Button>
                 </div>
               ))}
             </div>
           ) : (
             <Button type="button" disabled={mfaLoading} onClick={handleEnrollMfa}>
-              {mfaLoading ? 'WORKING...' : 'ENABLE MFA'}
+              {mfaLoading ? 'Working...' : 'Enable MFA'}
             </Button>
           )}
 
           {enrollQr && enrollFactorId && (
-            <div className="space-y-3 border border-dashed border-monday-3pm/40 p-4">
+            <div className="space-y-3 rounded-md border border-dashed border-monday-3pm/40 p-4">
               <p className="text-sm text-monday-3pm">
                 Scan this QR code in your authenticator app, then enter the 6-digit code to confirm.
               </p>
@@ -388,7 +388,7 @@ export default function SettingsPage() {
               )}
               <form onSubmit={handleVerifyMfa} className="space-y-3">
                 <Input
-                  label="Verification Code"
+                  label="verification code"
                   type="text"
                   inputMode="numeric"
                   value={enrollCode}
@@ -396,7 +396,7 @@ export default function SettingsPage() {
                   required
                 />
                 <Button type="submit" disabled={mfaLoading}>
-                  {mfaLoading ? 'VERIFYING...' : 'VERIFY MFA'}
+                  {mfaLoading ? 'Verifying...' : 'Verify MFA'}
                 </Button>
               </form>
             </div>
@@ -404,7 +404,7 @@ export default function SettingsPage() {
         </div>
       </Card>
 
-      <Card title="Reset All Data">
+      <Card title="Reset all data">
         <div className="space-y-4">
           <p className="text-sm text-monday-3pm">
             This will permanently delete all budget periods, income items, category budgets,
@@ -415,7 +415,7 @@ export default function SettingsPage() {
             (Are you sure about this?)
           </p>
 
-          <form onSubmit={handleReset} className="space-y-4 border-t-2 border-dark pt-4">
+          <form onSubmit={handleReset} className="space-y-4 border-t border-line pt-4">
             <Input
               label='Type "RESET MY BUDGET" to confirm'
               value={resetPhrase}
@@ -425,22 +425,22 @@ export default function SettingsPage() {
             />
 
             <Button type="submit" variant="danger" disabled={resetting}>
-              {resetting ? 'RESETTING...' : 'RESET EVERYTHING'}
+              {resetting ? 'Resetting...' : 'Reset everything'}
             </Button>
           </form>
         </div>
       </Card>
 
-      <div className="mt-8 p-4 border-2 border-cubicle-taupe bg-white">
-        <h3 className="text-sm uppercase font-medium mb-2">About Boring Budget</h3>
+      <div className="mt-8 rounded-md border border-line bg-white p-4">
+        <h3 className="text-sm font-semibold text-foreground mb-2">About Boring Budget</h3>
         <p className="text-sm text-monday-3pm mb-2">
           Version 1.0.0 (Unremarkable Edition)
         </p>
         <p className="text-sm text-monday-3pm">
-          A single-user budgeting app that's thrillingly tedious and professionally boring.
+          An invite-only budgeting app that's thrillingly tedious and professionally boring.
         </p>
         <p className="text-sm text-monday-3pm mt-4">
-          Built with Next.js, Prisma, SQLite, and an unhealthy appreciation for monotony.
+          Built with Next.js, Prisma, Supabase Postgres, and an unhealthy appreciation for monotony.
         </p>
       </div>
     </div>
