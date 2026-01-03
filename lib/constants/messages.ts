@@ -15,7 +15,7 @@ export const SUCCESS_MESSAGES = {
   SAVED: 'Saved. Hold your applause.',
   TRANSACTION_ADDED: 'Logged. The crowd goes mild.',
   BUDGET_BALANCED: 'Balanced. Try to contain yourself.',
-  CHANGES_SAVED: 'Done. We'll wait while you recover.',
+  CHANGES_SAVED: "Done. We'll wait while you recover.",
   DELETED: 'Gone. Just like that.',
   LINKED: 'Connected. How satisfying.',
 }
