@@ -323,7 +323,7 @@ export default function RecurringPage() {
           Recurring schedules
         </h1>
         <p className="text-sm text-monday-3pm">
-            Recurring schedules for expenses and income. They appear automatically.
+            The bills that keep coming back. Like clockwork. Like taxes.
         </p>
       </header>
 
@@ -424,7 +424,7 @@ export default function RecurringPage() {
                               })
                             }
                             disabled={isSavingSuggestion}
-                            className="w-full rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                            className="w-full rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
                           >
                             {RECURRING_CATEGORIES.map(cat => (
                               <option key={cat} value={cat}>{cat}</option>
@@ -727,7 +727,7 @@ function renderRecurringFields({
         <select
           value={category}
           onChange={(e) => onCategoryChange(e.target.value)}
-          className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
         >
           {RECURRING_CATEGORIES.map(cat => (
             <option key={cat} value={cat}>{cat}</option>
@@ -752,7 +752,7 @@ function renderRecurringFields({
         <select
           value={frequency}
           onChange={(e) => onFrequencyChange(e.target.value)}
-          className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
         >
           <option value="monthly">Monthly</option>
           <option value="weekly">Weekly</option>
@@ -781,7 +781,7 @@ function renderRecurringFields({
           <select
             value={dayOfWeek}
             onChange={(e) => onDayOfWeekChange(e.target.value)}
-            className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
           >
             <option value="0">Sunday</option>
             <option value="1">Monday</option>

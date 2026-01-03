@@ -8,6 +8,7 @@ import { Button } from './Button'
 import { Table } from './Table'
 import { InlineCategoryEditor } from './InlineCategoryEditor'
 import { InlineNoteEditor } from './InlineNoteEditor'
+import { SelectMenu } from './SelectMenu'
 import { RecurringModal } from './RecurringModal'
 import { formatCurrency, parseCurrency, roundCurrency } from '@/lib/utils/currency'
 import { calculatePreallocations } from '@/lib/utils/calculations'
@@ -89,6 +90,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
   const [showAddTransactionForm, setShowAddTransactionForm] = useState(false)
   const [showTransactionFilters, setShowTransactionFilters] = useState(false)
   const [budgetTableSelection, setBudgetTableSelection] = useState<string | null>(null)
+  const [bulkCategory, setBulkCategory] = useState('')
   const [incomeMatchOpen, setIncomeMatchOpen] = useState(false)
   const [incomeMatchTarget, setIncomeMatchTarget] = useState<any>(null)
   const [incomeMatchCandidates, setIncomeMatchCandidates] = useState<any[]>([])
@@ -1216,7 +1218,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
             </div>
             <div className="mt-3 h-2 w-full overflow-hidden rounded bg-line">
               <div
-                className="h-full bg-accent transition-[width] duration-300"
+                className="h-full bg-accent-2 transition-[width] duration-300"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -1253,7 +1255,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                 value={incomeMatchSearch}
                 onChange={(e) => setIncomeMatchSearch(e.target.value)}
                 placeholder="Search description or amount"
-                className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
               />
             </div>
 
@@ -1318,7 +1320,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                 value={recurringMatchSearch}
                 onChange={(e) => setRecurringMatchSearch(e.target.value)}
                 placeholder="Search description or amount"
-                className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
               />
             </div>
 
@@ -1768,20 +1770,13 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
               onChange={setTransactionAmount}
               placeholder="0.00"
             />
-            <div className="flex flex-col gap-1">
-              <label className="mono-label">
-                Category
-              </label>
-              <select
-                value={transactionCategory}
-                onChange={(e) => setTransactionCategory(e.target.value)}
-                className="rounded-md border border-line bg-white px-3 py-2 text-sm text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-              >
-                {TRANSACTION_CATEGORIES.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
+            <SelectMenu
+              label="Category"
+              value={transactionCategory}
+              onChange={setTransactionCategory}
+              options={TRANSACTION_CATEGORIES.map(cat => ({ value: cat, label: cat }))}
+              className="min-w-[200px]"
+            />
             <Input
               label="Date"
               type="date"
@@ -1796,39 +1791,36 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
               showTransactionFilters ? '' : 'hidden md:flex'
             }`}
           >
-            <div className="flex gap-2 items-center">
-              <label className="mono-label">Filter category</label>
-              <select
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-                className="rounded-md border border-line bg-white px-2 py-1 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-              >
-                <option value="all">All</option>
-                {TRANSACTION_CATEGORIES.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex gap-2 items-center">
-              <label className="mono-label">Filter status</label>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="rounded-md border border-line bg-white px-2 py-1 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-              >
-                <option value="all">All</option>
-                <option value="projected">Projected</option>
-                <option value="posted">Posted</option>
-              </select>
-            </div>
-            <div className="flex items-center">
-              <Button
-                variant="secondary"
-                onClick={() => setShowIgnored(prev => !prev)}
-              >
-                {showIgnored ? 'Hide ignored' : 'Show ignored'}
-              </Button>
-            </div>
+            <SelectMenu
+              label="Filter category"
+              value={filterCategory}
+              onChange={setFilterCategory}
+              options={[
+                { value: 'all', label: 'All' },
+                ...TRANSACTION_CATEGORIES.map(cat => ({ value: cat, label: cat })),
+              ]}
+              className="min-w-[180px]"
+            />
+            <SelectMenu
+              label="Filter status"
+              value={filterStatus}
+              onChange={setFilterStatus}
+              options={[
+                { value: 'all', label: 'All' },
+                { value: 'projected', label: 'Projected' },
+                { value: 'posted', label: 'Posted' },
+              ]}
+              className="min-w-[160px]"
+            />
+            <label className="flex items-center gap-2 mono-label">
+              <input
+                type="checkbox"
+                checked={showIgnored}
+                onChange={(e) => setShowIgnored(e.target.checked)}
+                className="h-4 w-4 cursor-pointer accent-accent-2"
+              />
+              show ignored
+            </label>
             <div className="flex flex-wrap gap-2 md:ml-auto">
               <Button
                 variant={multiSelectMode ? 'primary' : 'secondary'}
@@ -1858,24 +1850,18 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
           {selectedTransactions.size > 0 && (
             <div className="bg-surface-muted border border-line p-4 flex flex-col md:flex-row md:items-center flex-wrap gap-4">
               <div className="font-medium">{selectedTransactions.size} selected</div>
-              <div className="flex gap-2 items-center">
-                <label className="mono-label">Assign category</label>
-                <select
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      handleBulkCategoryUpdate(e.target.value)
-                      e.target.value = ''
-                    }
-                  }}
-                  className="rounded-md border border-line bg-white px-2 py-1 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-                  defaultValue=""
-                >
-                  <option value="">Select...</option>
-                  {TRANSACTION_CATEGORIES.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </div>
+              <SelectMenu
+                label="Assign category"
+                value={bulkCategory}
+                placeholder="Select"
+                onChange={(nextValue) => {
+                  if (!nextValue) return
+                  handleBulkCategoryUpdate(nextValue)
+                  setBulkCategory('')
+                }}
+                options={TRANSACTION_CATEGORIES.map(cat => ({ value: cat, label: cat }))}
+                className="min-w-[200px]"
+              />
               <Button variant="danger" onClick={handleBulkDelete}>
                 Delete selected
               </Button>
@@ -2304,7 +2290,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                                 placeholder="Search description, note, or amount"
                                 value={refundSearchQuery}
                                 onChange={(e) => handleLinkSearchChange(t.id, 'refund', e.target.value)}
-                                className="mt-1 w-full rounded-md border border-line bg-white px-2 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                                className="mt-1 w-full rounded-md border border-line bg-white px-2 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
                               />
                               {refundSearchLoading && (
                                 <div className="mt-2 text-monday-3pm">Searching...</div>
@@ -2340,7 +2326,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                                               [`${t.id}:refund:${candidate.id}`]: e.target.value,
                                             }))
                                           }
-                                          className="w-28 rounded-md border border-line bg-white px-2 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                                          className="w-28 rounded-md border border-line bg-white px-2 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
                                         />
                                         <Button
                                           variant="secondary"
@@ -2377,7 +2363,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                                 placeholder="Search description, note, or amount"
                                 value={reimbursementSearchQuery}
                                 onChange={(e) => handleLinkSearchChange(t.id, 'reimbursement', e.target.value)}
-                                className="mt-1 w-full rounded-md border border-line bg-white px-2 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                                className="mt-1 w-full rounded-md border border-line bg-white px-2 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
                               />
                               {reimbursementSearchLoading && (
                                 <div className="mt-2 text-monday-3pm">Searching...</div>
@@ -2413,7 +2399,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                                               [`${t.id}:reimbursement:${candidate.id}`]: e.target.value,
                                             }))
                                           }
-                                          className="w-28 rounded-md border border-line bg-white px-2 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                                          className="w-28 rounded-md border border-line bg-white px-2 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
                                         />
                                         <Button
                                           variant="secondary"

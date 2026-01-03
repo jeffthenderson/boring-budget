@@ -31,7 +31,7 @@ export default async function Home({
           Boring Budget
         </h1>
         <p className="text-sm text-monday-3pm">
-          Budget like nobody is watching. They are not.
+          Budget like nobody is watching. (They are not.)
         </p>
       </header>
 

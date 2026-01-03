@@ -76,7 +76,7 @@ export function InlineCategoryEditor({
         onClick={() => !disabled && setIsOpen(!isOpen)}
         onKeyDown={handleKeyDown}
         disabled={disabled}
-        className={`px-3 py-1 rounded-md text-[10px] font-mono uppercase tracking-[0.12em] transition duration-150 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
+        className={`px-3 py-1 rounded-md text-[10px] font-mono uppercase tracking-[0.12em] transition duration-150 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2 ${
           disabled
             ? 'bg-surface-muted text-monday-3pm cursor-not-allowed'
             : `${colors.bg} ${colors.text} hover:brightness-95 cursor-pointer`
@@ -97,7 +97,7 @@ export function InlineCategoryEditor({
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full border-b border-line bg-white px-3 py-2 text-sm text-foreground placeholder:text-slate-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            className="w-full border-b border-line bg-white px-3 py-2 text-sm text-foreground placeholder:text-slate-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
             autoFocus
           />
           <div className="max-h-60 overflow-y-auto">
@@ -106,7 +106,7 @@ export function InlineCategoryEditor({
                 key={category}
                 onClick={() => handleCategorySelect(category)}
                 className={`w-full px-3 py-2 text-left text-sm transition-colors hover:bg-surface-muted ${
-                  category === currentCategory ? 'bg-accent-soft font-semibold' : ''
+                  category === currentCategory ? 'bg-accent-2-soft font-semibold' : ''
                 }`}
               >
                 {category}

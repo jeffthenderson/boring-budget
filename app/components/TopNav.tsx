@@ -34,7 +34,7 @@ export function TopNav({ showBrand = true }: { showBrand?: boolean }) {
           onClick={() => setOpen(prev => !prev)}
           aria-expanded={open}
           aria-controls="top-nav"
-          className="md:hidden rounded-md border border-line bg-white px-3 py-2 text-[11px] font-mono uppercase tracking-[0.08em] text-foreground transition hover:bg-accent-soft"
+          className="md:hidden rounded-md border border-line bg-white px-3 py-2 text-[11px] font-mono uppercase tracking-[0.08em] text-foreground transition hover:bg-accent-2-soft"
         >
           {open ? 'Close' : 'Menu'}
         </button>
@@ -51,13 +51,16 @@ export function TopNav({ showBrand = true }: { showBrand?: boolean }) {
               key={item.href}
               href={item.href}
               onClick={() => setOpen(false)}
-              className={`rounded-full px-3 py-1 font-mono text-[11px] uppercase tracking-[0.08em] transition ${
+              className={`relative rounded-full px-3 py-1 font-mono text-[11px] uppercase tracking-[0.08em] transition ${
                 isActive
                   ? 'bg-accent-soft text-foreground'
-                  : 'text-monday-3pm hover:bg-accent-soft hover:text-foreground'
+                  : 'text-monday-3pm hover:bg-accent-2-soft hover:text-foreground'
               }`}
             >
-              {item.label}
+              {isActive && (
+                <span className="absolute left-1 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-accent-2" />
+              )}
+              <span className={isActive ? 'ml-1' : ''}>{item.label}</span>
             </Link>
           )
         })}

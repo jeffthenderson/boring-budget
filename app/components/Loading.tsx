@@ -20,7 +20,7 @@ export function Loading() {
         <div className="text-sm text-monday-3pm">{message}</div>
         <div className="mt-3 flex justify-center gap-2">
           <div className="h-2 w-2 rounded-full bg-line animate-pulse"></div>
-          <div className="h-2 w-2 rounded-full bg-line animate-pulse delay-75"></div>
+          <div className="h-2 w-2 rounded-full bg-accent-2 animate-pulse delay-75"></div>
           <div className="h-2 w-2 rounded-full bg-accent animate-pulse delay-150"></div>
         </div>
       </div>

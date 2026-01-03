@@ -64,7 +64,7 @@ export function InlineNoteEditor({
           onChange={(e) => setEditValue(e.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={handleSave}
-          className="flex-1 rounded-md border border-line px-2 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          className="flex-1 rounded-md border border-line px-2 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
           disabled={disabled}
           placeholder="Add a note"
         />

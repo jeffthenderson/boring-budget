@@ -439,7 +439,7 @@ export default function AmazonPage() {
           Amazon orders
         </h1>
         <p className="text-sm text-monday-3pm">
-          Match Amazon orders to transactions. Quietly effective.
+          The receipts you didn't want.
         </p>
       </header>
 
@@ -531,7 +531,7 @@ export default function AmazonPage() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as (typeof STATUS_OPTIONS)[number])}
-                className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
               >
                 {STATUS_OPTIONS.map(option => (
                   <option key={option} value={option}>
@@ -545,7 +545,7 @@ export default function AmazonPage() {
                 type="checkbox"
                 checked={showIgnored}
                 onChange={(e) => setShowIgnored(e.target.checked)}
-                className="w-4 h-4 cursor-pointer"
+                className="w-4 h-4 cursor-pointer accent-accent-2"
               />
               show ignored
             </label>

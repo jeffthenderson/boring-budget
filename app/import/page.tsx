@@ -75,7 +75,7 @@ function ImportWizard() {
         )}
         <div className="flex items-center justify-center gap-2">
           <div className="h-2 w-2 bg-line animate-pulse rounded-full"></div>
-          <div className="h-2 w-2 bg-line animate-pulse delay-75 rounded-full"></div>
+          <div className="h-2 w-2 bg-accent-2 animate-pulse delay-75 rounded-full"></div>
           <div className="h-2 w-2 bg-accent animate-pulse delay-150 rounded-full"></div>
         </div>
       </div>
@@ -361,6 +361,9 @@ function ImportWizard() {
             CSV import
           </h1>
           <p className="text-sm text-monday-3pm">
+            More transactions. Oh joy.
+          </p>
+          <p className="text-xs text-monday-3pm mt-1">
             Step 1: Drop CSVs and choose accounts. We will guess.
           </p>
         </header>
@@ -390,13 +393,13 @@ function ImportWizard() {
                     accept=".csv"
                     multiple
                     onChange={handleFileSelect}
-                    className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                    className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
                   />
                 </div>
 
                 {parsingFiles && (
                   <div className="flex items-center gap-2 text-sm text-monday-3pm">
-                    <div className="h-2 w-2 bg-accent animate-pulse rounded-full"></div>
+                    <div className="h-2 w-2 bg-accent-2 animate-pulse rounded-full"></div>
                     <span>Parsing files. Quietly.</span>
                   </div>
                 )}
@@ -422,7 +425,7 @@ function ImportWizard() {
                           <select
                             value={file.accountId}
                             onChange={(e) => handleAccountChange(file.id, e.target.value)}
-                            className="w-full rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                            className="w-full rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
                           >
                             <option value="">Choose account</option>
                             {accounts.map(acc => (
@@ -452,7 +455,7 @@ function ImportWizard() {
                   <select
                     value={periodMode}
                     onChange={(e) => setPeriodMode(e.target.value as PeriodMode)}
-                    className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                    className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
                   >
                     <option value="current">Current month only</option>
                     <option value="auto">All dates (auto-create months)</option>
@@ -464,7 +467,7 @@ function ImportWizard() {
                       type="month"
                       value={targetMonth}
                       onChange={(e) => setTargetMonth(e.target.value)}
-                      className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                      className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
                     />
                   )}
                 </div>
@@ -495,6 +498,9 @@ function ImportWizard() {
             CSV import
           </h1>
           <p className="text-sm text-monday-3pm">
+            More transactions. Oh joy.
+          </p>
+          <p className="text-xs text-monday-3pm mt-1">
             Step 2: Map columns. ({currentFileIndex + 1} of {files.length})
           </p>
         </header>
@@ -521,7 +527,7 @@ function ImportWizard() {
                 <select
                   value={mapping.date}
                   onChange={(e) => updateFile(activeFile.id, { mapping: { ...mapping, date: e.target.value } })}
-                  className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                  className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
                 >
                   {activeFile.csvData.headers.map(h => (
                     <option key={h} value={h}>{h}</option>
@@ -536,7 +542,7 @@ function ImportWizard() {
                 <select
                   value={mapping.description}
                   onChange={(e) => updateFile(activeFile.id, { mapping: { ...mapping, description: e.target.value } })}
-                  className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                  className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
                 >
                   {activeFile.csvData.headers.map(h => (
                     <option key={h} value={h}>{h}</option>
@@ -551,7 +557,7 @@ function ImportWizard() {
                 <select
                   value={mapping.amount}
                   onChange={(e) => updateFile(activeFile.id, { mapping: { ...mapping, amount: e.target.value } })}
-                  className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                  className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
                 >
                   {activeFile.csvData.headers.map(h => (
                     <option key={h} value={h}>{h}</option>
@@ -566,7 +572,7 @@ function ImportWizard() {
                 <select
                   value={mapping.merchant || ''}
                   onChange={(e) => updateFile(activeFile.id, { mapping: { ...mapping, merchant: e.target.value || undefined } })}
-                  className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                  className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
                 >
                   <option value="">None</option>
                   {activeFile.csvData.headers.map(h => (
@@ -582,7 +588,7 @@ function ImportWizard() {
                 <select
                   value={mapping.transactionType || ''}
                   onChange={(e) => updateFile(activeFile.id, { mapping: { ...mapping, transactionType: e.target.value || undefined } })}
-                  className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                  className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
                 >
                   <option value="">None</option>
                   {activeFile.csvData.headers.map(h => (
@@ -646,6 +652,9 @@ function ImportWizard() {
             CSV import
           </h1>
           <p className="text-sm text-monday-3pm">
+            More transactions. Oh joy.
+          </p>
+          <p className="text-xs text-monday-3pm mt-1">
             Step 3: Confirm and import. Last chance to back out.
           </p>
         </header>

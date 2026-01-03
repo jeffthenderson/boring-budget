@@ -82,7 +82,7 @@ export default function AccountsPage() {
           Accounts
         </h1>
         <p className="text-sm text-monday-3pm">
-          Configure accounts for CSV imports. Calmly organized.
+          Where the money lives. Or lived.
         </p>
       </header>
 
@@ -109,7 +109,7 @@ export default function AccountsPage() {
                 <select
                   value={type}
                   onChange={(e) => setType(e.target.value as 'credit_card' | 'bank')}
-                  className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                  className="rounded-md border border-line bg-white px-3 py-2 text-foreground focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
                 >
                   <option value="bank">Bank account</option>
                   <option value="credit_card">Credit card</option>

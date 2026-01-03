@@ -158,7 +158,7 @@ export function RecurringModal({
               <select
                 value={selectedDefinitionId}
                 onChange={(e) => setSelectedDefinitionId(e.target.value)}
-                className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
               >
                 <option value="">Choose</option>
                 {existingDefinitions.map((def) => {
@@ -197,7 +197,7 @@ export function RecurringModal({
                   setMerchantLabel(value)
                   setDisplayLabel(prev => (prev === '' || prev === merchantLabel ? value : prev))
                 }}
-                className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
                 placeholder="e.g., Netflix"
               />
             </div>
@@ -208,7 +208,7 @@ export function RecurringModal({
                 type="text"
                 value={displayLabel}
                 onChange={(e) => setDisplayLabel(e.target.value)}
-                className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
                 placeholder="e.g., Paramount Plus"
               />
             </div>
@@ -220,7 +220,7 @@ export function RecurringModal({
                 value={nominalAmount}
                 onChange={(e) => setNominalAmount(e.target.value)}
                 inputMode="decimal"
-                className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
               />
             </div>
 
@@ -229,7 +229,7 @@ export function RecurringModal({
               <select
                 value={frequency}
                 onChange={(e) => setFrequency(e.target.value)}
-                className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
               >
                 <option value="monthly">Monthly</option>
                 <option value="weekly">Weekly</option>
@@ -247,7 +247,7 @@ export function RecurringModal({
                   onChange={(e) => setDayOfMonth(e.target.value)}
                   min="1"
                   max="31"
-                  className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                  className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
                 />
               </div>
             )}
@@ -258,7 +258,7 @@ export function RecurringModal({
                 <select
                   value={dayOfWeek}
                   onChange={(e) => setDayOfWeek(e.target.value)}
-                  className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                  className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
                 >
                   <option value="1">Monday</option>
                   <option value="2">Tuesday</option>
@@ -281,7 +281,7 @@ export function RecurringModal({
                     onChange={(e) => setFirstDay(e.target.value)}
                     min="1"
                     max="31"
-                    className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                    className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
                   />
                 </div>
                 <div className="flex-1">
@@ -292,7 +292,7 @@ export function RecurringModal({
                     onChange={(e) => setSecondDay(e.target.value)}
                     min="1"
                     max="31"
-                    className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                    className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
                   />
                 </div>
               </div>

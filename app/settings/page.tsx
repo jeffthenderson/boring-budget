@@ -240,7 +240,7 @@ export default function SettingsPage() {
           Settings
         </h1>
         <p className="text-sm text-monday-3pm">
-          Configure pre-allocations and admin tools. Calmly.
+          The fine print. The knobs. The levers.
         </p>
       </header>
 

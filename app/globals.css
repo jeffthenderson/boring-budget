@@ -10,6 +10,9 @@
   --accent: #111827;
   --accent-strong: #0B1220;
   --accent-soft: #E5E7EB;
+  --accent-2: #0EA5E9;
+  --accent-2-strong: #0284C7;
+  --accent-2-soft: #E0F2FE;
   --danger: #E11D48;
   --danger-strong: #BE123C;
   --danger-soft: #FFE4E9;
@@ -30,6 +33,9 @@
   --color-accent: var(--accent);
   --color-accent-strong: var(--accent-strong);
   --color-accent-soft: var(--accent-soft);
+  --color-accent-2: var(--accent-2);
+  --color-accent-2-strong: var(--accent-2-strong);
+  --color-accent-2-soft: var(--accent-2-soft);
   --color-danger: var(--danger);
   --color-danger-strong: var(--danger-strong);
   --color-danger-soft: var(--danger-soft);
@@ -99,6 +105,14 @@ a {
   transition: color 150ms ease;
 }
 
+a:hover {
+  color: var(--accent-2);
+}
+
+a.no-color-hover:hover {
+  color: inherit;
+}
+
 ::selection {
   background: var(--accent-soft);
 }
@@ -113,6 +127,23 @@ a {
     transform: translateY(0);
   }
 }
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-in-from-top-1 {
+  from { transform: translateY(-4px); }
+  to { transform: translateY(0); }
+}
+
+.animate-in {
+  animation: fade-in 150ms ease-out, slide-in-from-top-1 150ms ease-out;
+}
+
+.fade-in { animation-name: fade-in; }
+.slide-in-from-top-1 { animation-name: slide-in-from-top-1; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
