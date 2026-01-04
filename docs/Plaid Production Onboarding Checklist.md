@@ -72,17 +72,16 @@ You've been approved for Production. Use this checklist to finish your integrati
     ✅ Server actions verify user ownership before operations
     ✅ Webhook verifies item ownership
 
-  - [ ] **Remove Sandbox calls** — Ensure you're not calling Sandbox endpoints/keys in production.
-    ⚠️ Set `PLAID_ENV=production` in production environment
+  - [x] **Remove Sandbox calls** — Ensure you're not calling Sandbox endpoints/keys in production.
+    ✅ `PLAID_ENV=production` set in Vercel production environment
 
-  - [ ] **Switch to the Production server and API keys** — Use Production keys + Production environment everywhere.
-    ⚠️ Set these in production:
-    ```
-    PLAID_ENV=production
-    PLAID_CLIENT_ID=<production_client_id>
-    PLAID_SECRET=<production_secret>
-    PLAID_WEBHOOK_URL=https://yourdomain.com/api/plaid/webhook
-    ```
+  - [x] **Switch to the Production server and API keys** — Use Production keys + Production environment everywhere.
+    ✅ All production credentials configured in Vercel:
+    - `PLAID_ENV=production`
+    - `PLAID_CLIENT_ID` (production)
+    - `PLAID_SECRET` (production)
+    - `PLAID_WEBHOOK_URL=https://boring-budget.vercel.app/api/plaid/webhook`
+    - `PLAID_TOKEN_ENCRYPTION_KEY` (for access token encryption)
 
 ---
 
@@ -126,9 +125,12 @@ REQUIRE_MFA_FOR_PLAID=true
 
 ---
 
-## Remaining TODO before Production
+## ✅ Production Launch Complete
+
+All required items completed:
 
 1. ~~**Link Update Mode**~~ ✅ Implemented
 2. ~~**Duplicate Item Detection**~~ ✅ Implemented
 3. ~~**Data Disclosure**~~ ✅ Implemented (PlaidConsentDialog)
-4. **Switch Environment** — Update env vars to use production credentials
+4. ~~**Switch Environment**~~ ✅ Production credentials configured in Vercel
+5. ~~**MFA Enforcement**~~ ✅ Login requires MFA verification when enrolled
