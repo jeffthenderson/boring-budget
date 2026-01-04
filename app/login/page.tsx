@@ -110,31 +110,54 @@ export default function LoginPage() {
         return
       }
 
+      // Check if user has MFA factors enrolled
+      const { data: factorsData } = await supabase.auth.mfa.listFactors()
+      const verifiedTotpFactor = factorsData?.totp?.find(f => f.status === 'verified')
+
+      // If user has verified MFA, require it even if Supabase returned a session
+      if (verifiedTotpFactor) {
+        const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
+          factorId: verifiedTotpFactor.id,
+        })
+
+        if (challengeError) {
+          setError(challengeError.message)
+          return
+        }
+
+        setNeedsMfa(true)
+        setMfaFactorId(verifiedTotpFactor.id)
+        setMfaChallengeId(challengeData.id)
+        return
+      }
+
+      // No MFA enrolled, proceed with session
       if (data.session) {
         router.push('/')
         router.refresh()
         return
       }
 
+      // Fallback: check factors from signIn response (shouldn't reach here normally)
       const factors = data.user?.factors ?? []
       const totpFactor = factors.find(factor => factor.factor_type === 'totp')
-      if (!totpFactor) {
-        setError('Multi-factor verification required, but no factor is available.')
+      if (totpFactor) {
+        const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
+          factorId: totpFactor.id,
+        })
+
+        if (challengeError) {
+          setError(challengeError.message)
+          return
+        }
+
+        setNeedsMfa(true)
+        setMfaFactorId(totpFactor.id)
+        setMfaChallengeId(challengeData.id)
         return
       }
 
-      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
-        factorId: totpFactor.id,
-      })
-
-      if (challengeError) {
-        setError(challengeError.message)
-        return
-      }
-
-      setNeedsMfa(true)
-      setMfaFactorId(totpFactor.id)
-      setMfaChallengeId(challengeData.id)
+      setError('Login succeeded but no session was created.')
     } catch (err: any) {
       setError(err?.message || 'Login failed.')
     } finally {
