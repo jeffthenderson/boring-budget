@@ -24,7 +24,7 @@ export async function checkMfaStatus(): Promise<{
 }> {
   const supabase = await createSupabaseServerClient()
 
-  // Get the current session to check AMR claims
+  // Get the current session
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) {
     return { enabled: false, verified: false }
@@ -34,12 +34,10 @@ export async function checkMfaStatus(): Promise<{
   const { data: factors } = await supabase.auth.mfa.listFactors()
   const hasEnabledFactor = factors?.totp?.some(f => f.status === 'verified') ?? false
 
-  // Check if MFA was used in the current session (via AMR claims)
-  // AMR is on session.user but not typed in Supabase types
-  const amr = (session.user as any)?.amr ?? []
-  const mfaVerifiedInSession = amr.some(
-    (method: { method: string }) => method.method === 'totp' || method.method === 'mfa'
-  )
+  // Check the Authenticator Assurance Level (AAL) to see if MFA was verified
+  // aal1 = password only, aal2 = MFA verified
+  const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+  const mfaVerifiedInSession = aalData?.currentLevel === 'aal2'
 
   return {
     enabled: hasEnabledFactor,
