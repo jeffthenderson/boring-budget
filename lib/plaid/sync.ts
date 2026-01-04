@@ -82,6 +82,16 @@ export async function syncPlaidTransactions(accountId: string): Promise<SyncResu
   // Filter transactions to only include those for this specific account
   // (Plaid returns all transactions for the Item, which may have multiple accounts)
   const plaidAccountId = account.plaidAccountId
+
+  // Debug logging
+  console.log(`Plaid sync for account ${accountId}:`)
+  console.log(`  - plaidAccountId filter: ${plaidAccountId || 'none (will include all)'}`)
+  console.log(`  - Total transactions from Plaid: added=${allAdded.length}, modified=${allModified.length}, removed=${allRemoved.length}`)
+  if (allAdded.length > 0) {
+    const uniqueAccountIds = [...new Set(allAdded.map(tx => tx.account_id))]
+    console.log(`  - Unique account_ids in added transactions: ${uniqueAccountIds.join(', ')}`)
+  }
+
   const filteredAdded = plaidAccountId
     ? allAdded.filter(tx => tx.account_id === plaidAccountId)
     : allAdded
@@ -91,6 +101,8 @@ export async function syncPlaidTransactions(accountId: string): Promise<SyncResu
   const filteredRemoved = plaidAccountId
     ? allRemoved.filter(tx => tx.account_id === plaidAccountId)
     : allRemoved
+
+  console.log(`  - After filtering: added=${filteredAdded.length}, modified=${filteredModified.length}, removed=${filteredRemoved.length}`)
 
   // Process added transactions
   if (filteredAdded.length > 0) {

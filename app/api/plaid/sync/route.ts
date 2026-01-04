@@ -29,7 +29,11 @@ export async function POST(request: Request) {
       )
     }
 
+    console.log(`Starting sync for account ${data.accountId}, plaidAccountId: ${account.plaidAccountId}`)
+
     const result = await syncPlaidTransactions(data.accountId)
+
+    console.log(`Sync complete for account ${data.accountId}:`, JSON.stringify(result))
 
     return NextResponse.json({
       success: true,
