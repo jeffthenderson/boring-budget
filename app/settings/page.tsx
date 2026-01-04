@@ -404,6 +404,78 @@ export default function SettingsPage() {
         </div>
       </Card>
 
+      <Card title="Data export &amp; import">
+        <div className="space-y-4">
+          <p className="text-sm text-monday-3pm">
+            Export your budget data to JSON for backup. Import to restore from a backup.
+            (Plaid credentials are not included in exports for security.)
+          </p>
+
+          <div className="flex flex-wrap gap-3">
+            <Button
+              onClick={() => {
+                window.location.href = '/api/data/export'
+              }}
+            >
+              Export data
+            </Button>
+
+            <label className="inline-flex">
+              <input
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+
+                  if (!confirm('This will REPLACE all existing data with the imported data. Continue?')) {
+                    e.target.value = ''
+                    return
+                  }
+
+                  try {
+                    const text = await file.text()
+                    const data = JSON.parse(text)
+
+                    // First clear existing data
+                    const clearRes = await fetch('/api/data/clear', { method: 'POST' })
+                    if (!clearRes.ok) {
+                      const err = await clearRes.json()
+                      alert(`Clear failed: ${err.error}`)
+                      return
+                    }
+
+                    // Then import new data
+                    const importRes = await fetch('/api/data/import', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(data),
+                    })
+                    const result = await importRes.json()
+
+                    if (!importRes.ok) {
+                      alert(`Import failed: ${result.error}`)
+                      return
+                    }
+
+                    alert(`Import complete! Imported: ${Object.entries(result.stats || {}).map(([k, v]) => `${v} ${k}`).join(', ')}`)
+                    router.refresh()
+                  } catch (err: any) {
+                    alert(`Import error: ${err?.message || 'Invalid file'}`)
+                  } finally {
+                    e.target.value = ''
+                  }
+                }}
+              />
+              <span className="inline-flex items-center justify-center gap-2 rounded-md border border-line bg-white px-4 py-2 text-[12px] font-mono uppercase tracking-[0.08em] transition duration-150 ease-out hover:bg-accent-2-soft cursor-pointer">
+                Import data
+              </span>
+            </label>
+          </div>
+        </div>
+      </Card>
+
       <Card title="Reset all data">
         <div className="space-y-4">
           <p className="text-sm text-monday-3pm">

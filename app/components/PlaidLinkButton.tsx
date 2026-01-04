@@ -3,6 +3,15 @@
 import { useCallback, useState } from 'react'
 import { usePlaidLink } from 'react-plaid-link'
 import { Button } from './Button'
+import { PlaidAccountMappingDialog } from './PlaidAccountMappingDialog'
+
+interface PlaidAccountOption {
+  plaidAccountId: string
+  name: string
+  mask: string
+  type: 'depository' | 'credit'
+  subtype: string
+}
 
 interface PlaidLinkButtonProps {
   accountId: string
@@ -28,6 +37,12 @@ export function PlaidLinkButton({
   const [isSyncing, setIsSyncing] = useState(false)
   const [isFixing, setIsFixing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // State for account mapping dialog
+  const [showMappingDialog, setShowMappingDialog] = useState(false)
+  const [pendingPublicToken, setPendingPublicToken] = useState<string>('')
+  const [pendingInstitution, setPendingInstitution] = useState<{ id: string; name: string } | null>(null)
+  const [pendingPlaidAccounts, setPendingPlaidAccounts] = useState<PlaidAccountOption[]>([])
 
   // Determine if we need to show error state
   const hasConnectionError = Boolean(plaidError)
@@ -128,45 +143,104 @@ export function PlaidLinkButton({
         return
       }
 
-      // Normal new connection flow
-      setIsLoading(true)
-      setError(null)
+      // Normal new connection flow - show mapping dialog to let user pick the right account
+      const accounts: PlaidAccountOption[] = metadata.accounts?.map((account: any) => ({
+        plaidAccountId: account.id,
+        name: account.name,
+        mask: account.mask || '',
+        type: account.type,
+        subtype: account.subtype,
+      })) || []
 
-      try {
-        const res = await fetch('/api/plaid/exchange-token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            publicToken,
-            accountId,
-            institutionId: metadata.institution?.institution_id,
-            institutionName: metadata.institution?.name,
-            plaidAccountId: metadata.accounts?.[0]?.id,
-          }),
-        })
-
-        if (!res.ok) {
-          throw new Error('Failed to link account')
-        }
-
-        // Trigger initial sync
-        await fetch('/api/plaid/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ accountId }),
-        })
-
-        onSuccess()
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to complete linking')
-        console.error('Error exchanging token:', err)
-      } finally {
-        setIsLoading(false)
+      if (accounts.length === 0) {
+        setError('No accounts were returned from Plaid')
         setLinkToken(null)
+        return
       }
+
+      // If only one account, skip the dialog and link directly
+      if (accounts.length === 1) {
+        await completeAccountLink(publicToken, accounts[0].plaidAccountId, metadata.institution)
+        return
+      }
+
+      // Multiple accounts - show mapping dialog
+      setPendingPublicToken(publicToken)
+      setPendingInstitution({
+        id: metadata.institution?.institution_id || '',
+        name: metadata.institution?.name || 'Unknown Bank',
+      })
+      setPendingPlaidAccounts(accounts)
+      setShowMappingDialog(true)
+      setLinkToken(null)
     },
     [accountId, onSuccess, isFixing]
   )
+
+  // Complete the account linking after user selects which Plaid account to map
+  const completeAccountLink = async (
+    publicToken: string,
+    plaidAccountId: string,
+    institution?: { institution_id?: string; name?: string }
+  ) => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const res = await fetch('/api/plaid/exchange-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          publicToken,
+          accountId,
+          institutionId: institution?.institution_id,
+          institutionName: institution?.name,
+          plaidAccountId,
+        }),
+      })
+
+      if (!res.ok) {
+        throw new Error('Failed to link account')
+      }
+
+      // Trigger initial sync
+      await fetch('/api/plaid/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId }),
+      })
+
+      onSuccess()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to complete linking')
+      console.error('Error exchanging token:', err)
+    } finally {
+      setIsLoading(false)
+      setLinkToken(null)
+    }
+  }
+
+  // Handle mapping dialog confirmation
+  const handleMappingConfirm = async (selectedPlaidAccountId: string) => {
+    setShowMappingDialog(false)
+    await completeAccountLink(
+      pendingPublicToken,
+      selectedPlaidAccountId,
+      pendingInstitution ? { institution_id: pendingInstitution.id, name: pendingInstitution.name } : undefined
+    )
+    // Clear pending state
+    setPendingPublicToken('')
+    setPendingInstitution(null)
+    setPendingPlaidAccounts([])
+  }
+
+  // Handle mapping dialog cancel
+  const handleMappingCancel = () => {
+    setShowMappingDialog(false)
+    setPendingPublicToken('')
+    setPendingInstitution(null)
+    setPendingPlaidAccounts([])
+  }
 
   const handleOnExit = useCallback(() => {
     setLinkToken(null)
@@ -311,17 +385,29 @@ export function PlaidLinkButton({
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <Button
-        variant="primary"
-        onClick={handleConnect}
-        disabled={isLoading}
-      >
-        {isLoading ? 'Connecting...' : 'Link Bank'}
-      </Button>
-      {error && (
-        <p className="text-xs text-red-600">{error}</p>
+    <>
+      <div className="flex flex-col gap-2">
+        <Button
+          variant="primary"
+          onClick={handleConnect}
+          disabled={isLoading}
+        >
+          {isLoading ? 'Connecting...' : 'Link Bank'}
+        </Button>
+        {error && (
+          <p className="text-xs text-red-600">{error}</p>
+        )}
+      </div>
+
+      {showMappingDialog && pendingInstitution && (
+        <PlaidAccountMappingDialog
+          existingAccountName={accountName}
+          institutionName={pendingInstitution.name}
+          plaidAccounts={pendingPlaidAccounts}
+          onConfirm={handleMappingConfirm}
+          onCancel={handleMappingCancel}
+        />
       )}
-    </div>
+    </>
   )
 }
