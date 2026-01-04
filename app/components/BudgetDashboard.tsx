@@ -133,8 +133,10 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
   const [recurringTransaction, setRecurringTransaction] = useState<any>(null)
   const [recurringDefinitions, setRecurringDefinitions] = useState<any[]>([])
 
+  // Only include recurring income for anticipated income calculation
+  // This excludes one-off income like interest payments
   const incomeTransactions = period.transactions
-    .filter((t: any) => t.category === 'Income' && !t.isIgnored)
+    .filter((t: any) => t.category === 'Income' && !t.isIgnored && t.isRecurringInstance)
     .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
   const anticipatedIncome = incomeTransactions.reduce(
     (sum: number, item: any) => sum + Math.abs(item.amount),
@@ -280,9 +282,11 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
   const budgetVsAvailableAfterRecurring = roundCurrency(
     nonRecurringBudgeted - availableAfterRecurring
   )
-  const transactionGridCols = multiSelectMode
-    ? 'md:grid-cols-[auto_1fr_2fr_1fr_1fr]'
-    : 'md:grid-cols-[1fr_2fr_1fr_1fr]'
+  const transactionGridStyle = {
+    gridTemplateColumns: multiSelectMode
+      ? 'auto 1fr 2fr 1fr auto 1fr'
+      : '1fr 2fr 1fr auto 1fr'
+  }
 
   useEffect(() => {
     if (filterCategory === 'all' || !BUDGET_CATEGORIES.includes(filterCategory as any)) {
@@ -1871,7 +1875,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
             </div>
           )}
 
-          <div className={`hidden md:grid ${transactionGridCols} gap-4 items-center px-1 mono-label`}>
+          <div className="hidden md:grid gap-4 items-center px-1 mono-label" style={transactionGridStyle}>
             {multiSelectMode && <div />}
             <button type="button" onClick={() => handleSortChange('date')} className="text-left hover:text-foreground">
               Date{getSortIndicator('date')}
@@ -1882,6 +1886,9 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
             <button type="button" onClick={() => handleSortChange('category')} className="text-left hover:text-foreground">
               Category{getSortIndicator('category')}
             </button>
+            <div className="text-monday-3pm">
+              Account
+            </div>
             <button type="button" onClick={() => handleSortChange('amount')} className="text-left hover:text-foreground">
               Amount{getSortIndicator('amount')}
             </button>
@@ -2025,9 +2032,10 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                       </div>
                     )}
                     <div
-                      className={`hidden md:grid ${transactionGridCols} gap-3 md:gap-4 items-start py-3 ${
+                      className={`hidden md:grid gap-3 md:gap-4 items-start py-3 ${
                         !multiSelectMode ? 'cursor-pointer hover:bg-surface-muted' : ''
                       } ${isSelected ? 'bg-surface-muted' : ''}`}
+                      style={transactionGridStyle}
                       onClick={(e) => handleRowClick(t.id, index, e)}
                     >
                       {multiSelectMode && (
@@ -2074,6 +2082,9 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                             {categoryLabel}
                           </span>
                         )}
+                      </div>
+                      <div className="text-xs text-monday-3pm truncate">
+                        {t.account?.name || t.importBatch?.account?.name || '—'}
                       </div>
                       <div>
                         <div className={`font-medium tabular-nums ${projectedClass}`}>

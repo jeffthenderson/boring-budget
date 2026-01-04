@@ -26,6 +26,7 @@ model User {
   categoryMappingRules    CategoryMappingRule[]
   categoryMappingDismissals CategoryMappingDismissal[]
   amazonOrders            AmazonOrder[]
+  plaidWebhookLogs        PlaidWebhookLog[]
 }
 
 model PreallocationSettings {
@@ -116,6 +117,8 @@ model Transaction {
   recurringDefinition     RecurringDefinition?  @relation(fields: [recurringDefinitionId], references: [id], onDelete: SetNull)
   importBatchId           String?
   importBatch             ImportBatch?          @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+  accountId               String?               // Direct account reference (for Plaid syncs)
+  account                 Account?              @relation(fields: [accountId], references: [id], onDelete: SetNull)
   amazonOrderTransactions AmazonOrderTransaction[]
   externalId              String?
   sourceImportHash        String?
@@ -141,7 +144,19 @@ model Account {
   updatedAt       DateTime       @updatedAt
   importBatches   ImportBatch[]
   rawImportRows   RawImportRow[]
+  transactions    Transaction[]
 
+  // Plaid Integration
+  plaidItemId          String?            // Plaid Item ID (shared across accounts from same bank)
+  plaidAccessToken     String?            // Encrypted access token
+  plaidAccountId       String?            // Specific account ID within the Item
+  plaidSyncCursor      String?            // Cursor for incremental sync
+  plaidLastSyncAt      DateTime?          // Last successful sync timestamp
+  plaidInstitutionId   String?            // Bank institution ID
+  plaidInstitutionName String?            // Bank name for display
+  plaidError           String?            // Error state (e.g., "ITEM_LOGIN_REQUIRED")
+
+  @@unique([plaidItemId, plaidAccountId])  // Each Plaid account can only be linked once
   @@index([userId])
 }
 
@@ -302,4 +317,21 @@ model AmazonOrderItem {
   order     AmazonOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
   title     String
   quantity  Int         @default(1)
+}
+
+// Plaid Integration
+model PlaidWebhookLog {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemId        String    // Plaid Item ID
+  webhookType   String    // TRANSACTIONS, ITEM, etc.
+  webhookCode   String    // SYNC_UPDATES_AVAILABLE, ERROR, etc.
+  payload       Json      // Full webhook payload
+  processedAt   DateTime?
+  error         String?
+  createdAt     DateTime  @default(now())
+
+  @@index([userId])
+  @@index([itemId])
 }

@@ -21,6 +21,7 @@ const PERIOD_INCLUDE = {
   transactions: {
     include: {
       recurringDefinition: true,
+      account: true,  // Direct account reference (for Plaid syncs)
       importBatch: {
         include: { account: true },
       },
@@ -258,6 +259,57 @@ export async function updateCategoryBudget(periodId: string, category: string, a
 
   revalidatePath('/')
   return budget
+}
+
+/**
+ * Get or create a period for a specific user and date
+ * Used by Plaid sync which operates on behalf of a user
+ */
+export async function getOrCreatePeriodForDate(userId: string, year: number, month: number) {
+  let period = await prisma.budgetPeriod.findUnique({
+    where: {
+      userId_year_month: {
+        userId,
+        year,
+        month,
+      },
+    },
+  })
+
+  if (!period) {
+    try {
+      period = await prisma.budgetPeriod.create({
+        data: {
+          userId,
+          year,
+          month,
+          status: 'open',
+          categoryBudgets: {
+            create: BUDGET_CATEGORIES.map(category => ({
+              category,
+              amountBudgeted: 0,
+            })),
+          },
+        },
+      })
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        period = await prisma.budgetPeriod.findUnique({
+          where: {
+            userId_year_month: {
+              userId,
+              year,
+              month,
+            },
+          },
+        })
+      } else {
+        throw error
+      }
+    }
+  }
+
+  return period!
 }
 
 export async function suggestCategoryBudgets(

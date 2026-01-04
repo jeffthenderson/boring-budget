@@ -4,8 +4,11 @@ import { useState, useEffect } from 'react'
 import { Card } from '../components/Card'
 import { Input } from '../components/Input'
 import { Button } from '../components/Button'
+import { PlaidLinkButton } from '../components/PlaidLinkButton'
+import { PlaidConnectBankButton } from '../components/PlaidConnectBankButton'
 import Link from 'next/link'
 import { TopNav } from '../components/TopNav'
+import { resetPlaidSyncCursors } from '@/lib/actions/plaid'
 
 interface Account {
   id: string
@@ -14,11 +17,16 @@ interface Account {
   displayAlias?: string
   last4?: string
   active: boolean
+  plaidItemId?: string | null
+  plaidInstitutionName?: string | null
+  plaidLastSyncAt?: string | null
+  plaidError?: string | null
 }
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [showForm, setShowForm] = useState(false)
+  const [isResyncing, setIsResyncing] = useState(false)
 
   const [name, setName] = useState('')
   const [type, setType] = useState<'credit_card' | 'bank'>('bank')
@@ -28,6 +36,36 @@ export default function AccountsPage() {
   useEffect(() => {
     loadAccounts()
   }, [])
+
+  const hasPlaidAccounts = accounts.some(a => a.plaidItemId)
+
+  async function handleForceResync() {
+    if (!confirm('Re-download all transactions from connected banks? This may take a moment.')) return
+
+    setIsResyncing(true)
+    try {
+      // Reset cursors
+      await resetPlaidSyncCursors()
+
+      // Trigger sync for each Plaid-connected account
+      const plaidAccounts = accounts.filter(a => a.plaidItemId)
+      for (const account of plaidAccounts) {
+        await fetch('/api/plaid/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accountId: account.id }),
+        })
+      }
+
+      loadAccounts()
+      alert('Full resync complete!')
+    } catch (error) {
+      console.error('Resync failed:', error)
+      alert('Resync failed. Check console for details.')
+    } finally {
+      setIsResyncing(false)
+    }
+  }
 
   async function loadAccounts() {
     const res = await fetch('/api/accounts')
@@ -88,9 +126,12 @@ export default function AccountsPage() {
 
       <div className="space-y-6">
         <Card>
-          <Button onClick={() => setShowForm(!showForm)}>
-            {showForm ? 'Cancel' : 'Add account'}
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <PlaidConnectBankButton onSuccess={loadAccounts} />
+            <Button onClick={() => setShowForm(!showForm)}>
+              {showForm ? 'Cancel' : 'Add account manually'}
+            </Button>
+          </div>
 
           {showForm && (
             <form onSubmit={handleSubmit} className="mt-4 space-y-4 border-t border-line pt-4">
@@ -142,45 +183,61 @@ export default function AccountsPage() {
               No accounts yet. Add one to import.
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-4">
               {accounts.map((account) => (
                 <div
                   key={account.id}
-                  className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-3 items-start md:items-center py-3 border-b border-line last:border-b-0"
+                  className="rounded-lg border border-line p-4"
                 >
-                  <div>
-                    <div className="font-medium">{account.name}</div>
-                    <div className="text-xs text-monday-3pm">
-                      {account.type === 'credit_card' ? 'Credit Card' : 'Bank Account'}
-                      {account.last4 && ` (...${account.last4})`}
+                  <div className="flex flex-col md:flex-row md:items-start gap-4">
+                    {/* Account Info */}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium">{account.name}</span>
+                        <span className="rounded-full bg-accent-soft px-2 py-0.5 text-xs">
+                          {account.active ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-monday-3pm">
+                        {account.type === 'credit_card' ? 'Credit Card' : 'Bank Account'}
+                        {account.last4 && ` (...${account.last4})`}
+                        {account.displayAlias && ` · ${account.displayAlias}`}
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-sm text-monday-3pm">
-                    {account.displayAlias || '(no alias)'}
-                  </div>
-                  <div>
-                    <span className="rounded-full bg-accent-soft px-2 py-1 mono-label">
-                      {account.active ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-2 md:justify-end">
-                    <Link href={`/import?account=${account.id}`}>
-                      <Button variant="secondary">
-                        Import CSV
+
+                    {/* Plaid Connection */}
+                    <div className="md:w-48">
+                      <PlaidLinkButton
+                        accountId={account.id}
+                        accountName={account.name}
+                        isLinked={Boolean(account.plaidItemId)}
+                        institutionName={account.plaidInstitutionName}
+                        lastSyncAt={account.plaidLastSyncAt ? new Date(account.plaidLastSyncAt) : null}
+                        plaidError={account.plaidError}
+                        onSuccess={loadAccounts}
+                      />
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex flex-wrap gap-2 md:justify-end">
+                      <Link href={`/import?account=${account.id}`}>
+                        <Button variant="secondary">
+                          Import CSV
+                        </Button>
+                      </Link>
+                      <Button
+                        variant="outline"
+                        onClick={() => toggleActive(account.id, account.active)}
+                      >
+                        {account.active ? 'Deactivate' : 'Activate'}
                       </Button>
-                    </Link>
-                    <Button
-                      variant="secondary"
-                      onClick={() => toggleActive(account.id, account.active)}
-                    >
-                      {account.active ? 'Deactivate' : 'Activate'}
-                    </Button>
-                    <Button
-                      variant="danger"
-                      onClick={() => handleDelete(account.id)}
-                    >
-                      Delete
-                    </Button>
+                      <Button
+                        variant="danger"
+                        onClick={() => handleDelete(account.id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -189,13 +246,37 @@ export default function AccountsPage() {
         </Card>
 
         <div className="rounded-md border border-line bg-white p-4">
-          <h3 className="text-sm font-semibold text-foreground mb-2">About CSV imports</h3>
-          <p className="text-sm text-monday-3pm mb-2">
-            Upload CSV files from your bank or credit card to automatically import transactions.
-          </p>
-          <p className="text-sm text-monday-3pm">
-            The importer will normalize signs, detect transfers, prevent duplicates, and suggest matches to recurring expenses.
-          </p>
+          <h3 className="text-sm font-semibold text-foreground mb-2">Getting started</h3>
+          <div className="space-y-3 text-sm text-monday-3pm">
+            <div>
+              <span className="font-medium text-foreground">Connect Bank:</span>{' '}
+              Connect your bank and select which accounts to import. All selected accounts will be created and synced automatically.
+            </div>
+            <div>
+              <span className="font-medium text-foreground">Link to Bank (existing accounts):</span>{' '}
+              If you already have accounts, use the "Link to Bank" button on each account to connect them to Plaid for automatic syncing.
+            </div>
+            <div>
+              <span className="font-medium text-foreground">Import CSV:</span>{' '}
+              Upload CSV files exported from your bank or credit card for manual import.
+            </div>
+            <div>
+              All methods normalize signs, detect transfers, prevent duplicates, and match recurring expenses.
+            </div>
+            {hasPlaidAccounts && (
+              <div className="pt-2 border-t border-line mt-3">
+                <span className="font-medium text-foreground">Troubleshooting:</span>{' '}
+                <button
+                  type="button"
+                  onClick={handleForceResync}
+                  disabled={isResyncing}
+                  className="underline hover:text-foreground disabled:opacity-50"
+                >
+                  {isResyncing ? 'Re-downloading...' : 'Re-download all transactions'}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
