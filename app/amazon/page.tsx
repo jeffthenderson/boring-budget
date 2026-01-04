@@ -598,7 +598,7 @@ export default function AmazonPage() {
                             href={order.orderUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-xs text-foreground hover:underline"
+                            className="text-xs text-accent-2 hover:underline"
                           >
                             Open on Amazon
                           </a>

@@ -572,6 +572,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
     const amount = parseCurrency(editingBudget[category] || '0')
     await updateCategoryBudget(period.id, category, amount)
     setEditingBudget({ ...editingBudget, [category]: '' })
+    router.refresh()
   }
 
   async function handleSuggestBudgets() {
@@ -1594,18 +1595,24 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
             {BUDGET_CATEGORIES.map(category => {
               const budget = period.categoryBudgets.find((b: any) => b.category === category)
               const amount = budget?.amountBudgeted || 0
+              const isRecurring = isRecurringCategory(category)
 
               return (
                 <div key={category} className="grid grid-cols-1 sm:grid-cols-[2fr_1fr_auto] gap-2 items-start sm:items-center py-2 border-b border-line">
-                  <div className="text-sm">{category}</div>
+                  <div className="text-sm">
+                    {category}
+                    {isRecurring && (
+                      <span className="block text-xs text-monday-3pm">From recurring schedules</span>
+                    )}
+                  </div>
                   <Input
                     type="text"
                     inputMode="decimal"
                     value={editingBudget[category] ?? amount.toString()}
                     onChange={(val) => setEditingBudget({ ...editingBudget, [category]: val })}
-                    disabled={budgetSetupLocked}
+                    disabled={budgetSetupLocked || isRecurring}
                   />
-                  <Button onClick={() => handleUpdateBudget(category)} disabled={budgetSetupLocked}>
+                  <Button onClick={() => handleUpdateBudget(category)} disabled={budgetSetupLocked || isRecurring}>
                     Update
                   </Button>
                 </div>
