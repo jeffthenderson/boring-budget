@@ -47,14 +47,23 @@ export function PlaidLinkButton({
         method: 'POST',
       })
 
+      const data = await res.json()
+
       if (!res.ok) {
-        throw new Error('Failed to create link token')
+        throw new Error(data.error || 'Failed to create link token')
       }
 
-      const data = await res.json()
       setLinkToken(data.linkToken)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to initialize Plaid')
+      const message = err instanceof Error ? err.message : 'Failed to initialize Plaid'
+      // Check for MFA-related errors and provide a clearer message
+      if (message.includes('MFA_VERIFICATION_REQUIRED') || message.includes('verify your two-factor')) {
+        setError('Log out and back in to activate 2FA')
+      } else if (message.includes('MFA_REQUIRED') || message.includes('enable two-factor')) {
+        setError('Enable 2FA in Settings to link bank')
+      } else {
+        setError(message)
+      }
       console.error('Error fetching link token:', err)
     } finally {
       setIsLoading(false)

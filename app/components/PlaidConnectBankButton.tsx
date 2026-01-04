@@ -187,18 +187,29 @@ export function PlaidConnectBankButton({ onSuccess }: PlaidConnectBankButtonProp
     setTimeout(handleOpenLink, 0)
   }
 
-  // If MFA is required but not enabled, show a message instead of the button
+  // If MFA is required but not enabled/verified, show a message instead of the button
   if (mfaStatus && !mfaStatus.allowed) {
+    // Check if the reason indicates MFA is enabled but session needs refresh
+    const needsSessionRefresh = mfaStatus.reason?.includes('verify your two-factor')
+
     return (
       <div className="flex items-center gap-2">
         <Button variant="primary" disabled>
           Connect Bank
         </Button>
         <span className="text-xs text-monday-3pm">
-          <Link href="/settings" className="underline hover:text-foreground">
-            Enable 2FA
-          </Link>{' '}
-          to connect your bank
+          {needsSessionRefresh ? (
+            <>
+              Log out and back in to activate 2FA
+            </>
+          ) : (
+            <>
+              <Link href="/settings" className="underline hover:text-foreground">
+                Enable 2FA
+              </Link>{' '}
+              to connect your bank
+            </>
+          )}
         </span>
       </div>
     )
