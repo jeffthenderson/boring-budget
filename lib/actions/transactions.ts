@@ -309,17 +309,36 @@ export async function linkTransactionToRecurring(
       return { success: false, error: 'Recurring definition not found' }
     }
 
-    // Find and remove any projected placeholder for this definition in this month
-    const projectedPlaceholder = await prisma.transaction.findFirst({
+    // Find and remove the projected placeholder that best matches this transaction
+    const projectedPlaceholders = await prisma.transaction.findMany({
       where: {
         periodId: transaction.periodId,
         recurringDefinitionId,
         status: 'projected',
         source: 'recurring',
       },
+      select: { id: true, date: true, amount: true },
     })
 
-    if (projectedPlaceholder) {
+    if (projectedPlaceholders.length > 0) {
+      const transactionExpense = getExpenseAmount(transaction)
+      const sortedByDate = projectedPlaceholders
+        .filter(placeholder => {
+          if (transactionExpense === 0) return true
+          const placeholderExpense = getExpenseAmount({
+            amount: placeholder.amount,
+            source: 'recurring',
+          })
+          if (placeholderExpense === 0) return false
+          return Math.sign(placeholderExpense) === Math.sign(transactionExpense)
+        })
+        .sort((a, b) => {
+          const diffA = Math.abs(a.date.getTime() - transaction.date.getTime())
+          const diffB = Math.abs(b.date.getTime() - transaction.date.getTime())
+          return diffA - diffB
+        })
+
+      const projectedPlaceholder = sortedByDate[0] ?? projectedPlaceholders[0]
       await prisma.transaction.delete({
         where: { id: projectedPlaceholder.id },
       })

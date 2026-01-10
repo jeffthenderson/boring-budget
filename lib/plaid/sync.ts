@@ -3,7 +3,7 @@
 import { prisma } from '@/lib/db'
 import { plaidClient } from './client'
 import { decryptAccessToken } from './encryption'
-import { mapPlaidCategory, isTransferCategory, isTransferDescription } from './category-map'
+import { isTransferCategory, isTransferDescription } from './category-map'
 import { getCurrentOrCreatePeriod, getOrCreatePeriodForDate } from '@/lib/actions/period'
 import { getBestRecurringMatch, matchAgainstDefinitions } from '@/lib/utils/import/recurring-matcher'
 import { computeHashKey, normalizeDescription } from '@/lib/utils/import/normalizer'
@@ -283,7 +283,7 @@ async function processAddedTransactions(
         )
 
         // Try to match recurring
-        let category = mapPlaidCategory(plaidCategory)
+        let category = 'Uncategorized'
         let isRecurringInstance = false
         let recurringDefinitionId: string | undefined
 
@@ -329,12 +329,6 @@ async function processAddedTransactions(
           if (mappingRule && mappingRule.category !== 'Uncategorized') {
             category = mappingRule.category
           }
-        }
-
-        // Handle income - only override if Plaid categorized it as INCOME
-        // Don't override for refunds/credits which are also negative
-        if (amount < 0 && plaidCategory?.primary === 'INCOME') {
-          category = 'Income'
         }
 
         transactionsToCreate.push({
