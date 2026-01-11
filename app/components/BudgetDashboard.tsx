@@ -2113,6 +2113,11 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                             <div className="mt-1 text-sm text-foreground">
                               {statusLabel}{t.isIgnored ? ' · ignored' : ''}
                             </div>
+                            {t.isIgnored && t.ignoreReason && (
+                              <div className="mt-1 text-xs text-muted">
+                                Reason: {t.ignoreReason}
+                              </div>
+                            )}
                           </div>
                           <div>
                             <div className="mono-label">Note</div>

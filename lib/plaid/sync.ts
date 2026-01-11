@@ -287,17 +287,20 @@ async function processAddedTransactions(
         const description = tx.name || tx.merchant_name || 'Unknown'
         const subDescription = tx.merchant_name && tx.name !== tx.merchant_name ? tx.merchant_name : undefined
 
-        if (isTransferCategory(plaidCategory)) {
-          console.log(`  [SKIP TRANSFER - category] ${description} | $${tx.amount} | category: ${plaidCategory?.primary}/${plaidCategory?.detailed}`)
-          result.skippedTransfers++
-          continue
-        }
+        // Check if this should be ignored as a transfer
+        let isIgnored = false
+        let ignoreReason: string | null = null
 
-        // Also check if description indicates a transfer (fallback)
-        if (isTransferDescription(description)) {
-          console.log(`  [SKIP TRANSFER - description] ${description} | $${tx.amount}`)
+        if (isTransferCategory(plaidCategory)) {
+          isIgnored = true
+          ignoreReason = `Transfer: ${plaidCategory?.primary}/${plaidCategory?.detailed}`
+          console.log(`  [IGNORED TRANSFER - category] ${description} | $${tx.amount} | category: ${plaidCategory?.primary}/${plaidCategory?.detailed}`)
           result.skippedTransfers++
-          continue
+        } else if (isTransferDescription(description)) {
+          isIgnored = true
+          ignoreReason = `Transfer pattern in description`
+          console.log(`  [IGNORED TRANSFER - description] ${description} | $${tx.amount}`)
+          result.skippedTransfers++
         }
 
         // Plaid amounts: positive = money leaving account (expense), negative = money entering (income/refund)
@@ -318,12 +321,12 @@ async function processAddedTransactions(
           normalizedDesc
         )
 
-        // Try to match recurring
+        // Try to match recurring (skip for ignored transactions)
         let category = 'Uncategorized'
         let isRecurringInstance = false
         let recurringDefinitionId: string | undefined
 
-        if (definitions.length > 0 && amount > 0) {
+        if (!isIgnored && definitions.length > 0 && amount > 0) {
           const importedRow = {
             id: tx.transaction_id,
             parsedDate: date,
@@ -373,8 +376,8 @@ async function processAddedTransactions(
           }
         }
 
-        // Check category mapping rules if not matched to recurring
-        if (!isRecurringInstance) {
+        // Check category mapping rules if not matched to recurring (skip for ignored)
+        if (!isIgnored && !isRecurringInstance) {
           const mappingRule = mappingRulesByNormalized.get(normalizedDesc)
           if (mappingRule && mappingRule.category !== 'Uncategorized') {
             category = mappingRule.category
@@ -388,13 +391,15 @@ async function processAddedTransactions(
           description,
           subDescription,
           amount,
-          category,
+          category: isIgnored ? 'Uncategorized' : category,  // Don't categorize ignored transactions
           status: tx.pending ? 'pending' : 'posted',
           source: 'import',
           externalId: tx.transaction_id,
           sourceImportHash: hashKey,
-          isRecurringInstance,
-          recurringDefinitionId,
+          isRecurringInstance: isIgnored ? false : isRecurringInstance,  // Don't mark ignored as recurring
+          recurringDefinitionId: isIgnored ? undefined : recurringDefinitionId,
+          isIgnored,
+          ignoreReason,
         })
       }
 
