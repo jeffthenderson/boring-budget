@@ -143,8 +143,25 @@ export async function deleteRecurringDefinition(id: string) {
     throw new Error('Recurring definition not found')
   }
 
+  await prisma.transaction.updateMany({
+    where: {
+      recurringDefinitionId: definition.id,
+      period: { userId: user.id },
+      status: { not: 'projected' },
+    },
+    data: {
+      recurringDefinitionId: null,
+      isRecurringInstance: false,
+    },
+  })
+
   await prisma.transaction.deleteMany({
-    where: { recurringDefinitionId: definition.id, period: { userId: user.id } },
+    where: {
+      recurringDefinitionId: definition.id,
+      period: { userId: user.id },
+      status: 'projected',
+      source: 'recurring',
+    },
   })
 
   await prisma.recurringDefinition.delete({
