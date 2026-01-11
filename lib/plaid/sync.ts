@@ -5,6 +5,7 @@ import { plaidClient } from './client'
 import { decryptAccessToken } from './encryption'
 import { isTransferCategory, isTransferDescription } from './category-map'
 import { getCurrentOrCreatePeriod, getOrCreatePeriodForDate } from '@/lib/actions/period'
+import { matchExistingImportsForOpenPeriodsByUser } from '@/lib/actions/recurring'
 import { findClosestProjectedTransaction, getBestRecurringMatch, matchAgainstDefinitions } from '@/lib/utils/import/recurring-matcher'
 import { computeHashKey, normalizeDescription } from '@/lib/utils/import/normalizer'
 import { revalidatePath } from 'next/cache'
@@ -137,6 +138,13 @@ export async function syncPlaidTransactions(accountId: string): Promise<SyncResu
         plaidLastSyncAt: new Date(),
       },
     })
+  }
+
+  try {
+    await matchExistingImportsForOpenPeriodsByUser(account.userId)
+  } catch (error) {
+    console.error('Error matching recurring transactions after Plaid sync:', error)
+    result.errors.push(error instanceof Error ? error.message : 'Failed to match recurring transactions')
   }
 
   revalidatePath('/')

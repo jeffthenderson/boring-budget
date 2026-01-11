@@ -232,16 +232,16 @@ export async function getAllRecurringDefinitions() {
   })
 }
 
-export async function matchExistingImportsForPeriod(
+export async function matchExistingImportsForPeriodByUser(
+  userId: string,
   periodId: string,
   options?: {
     definitionIds?: string[]
     revalidate?: boolean
   }
 ) {
-  const user = await getCurrentUser()
   const period = await prisma.budgetPeriod.findFirst({
-    where: { id: periodId, userId: user.id },
+    where: { id: periodId, userId },
     include: {
       user: { include: { recurringDefinitions: true } },
       transactions: {
@@ -411,12 +411,29 @@ export async function matchExistingImportsForPeriod(
   return { matched }
 }
 
+export async function matchExistingImportsForPeriod(
+  periodId: string,
+  options?: {
+    definitionIds?: string[]
+    revalidate?: boolean
+  }
+) {
+  const user = await getCurrentUser()
+  return matchExistingImportsForPeriodByUser(user.id, periodId, options)
+}
+
 export async function matchExistingImportsForOpenPeriods(definitionIds?: string[]) {
   const user = await getCurrentUser()
+  return matchExistingImportsForOpenPeriodsByUser(user.id, definitionIds)
+}
 
+export async function matchExistingImportsForOpenPeriodsByUser(
+  userId: string,
+  definitionIds?: string[]
+) {
   const openPeriods = await prisma.budgetPeriod.findMany({
     where: {
-      userId: user.id,
+      userId,
       status: 'open',
     },
     select: { id: true },
@@ -426,7 +443,7 @@ export async function matchExistingImportsForOpenPeriods(definitionIds?: string[
   let matched = 0
 
   for (const period of openPeriods) {
-    const result = await matchExistingImportsForPeriod(period.id, {
+    const result = await matchExistingImportsForPeriodByUser(userId, period.id, {
       definitionIds,
       revalidate: false,
     })

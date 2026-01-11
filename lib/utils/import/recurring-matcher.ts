@@ -36,9 +36,41 @@ export interface RecurringMatch {
 
 const TOKEN_MIN_LENGTH = 4
 const TOKEN_PREFIX_MATCH = 4
+const STOP_TOKENS = new Set([
+  'account',
+  'auto',
+  'autopay',
+  'bill',
+  'billing',
+  'card',
+  'cell',
+  'charge',
+  'credit',
+  'debit',
+  'fee',
+  'internet',
+  'membership',
+  'mobile',
+  'online',
+  'payment',
+  'phone',
+  'plan',
+  'service',
+  'subscription',
+  'transfer',
+  'wireless',
+])
 
 function tokenizeNormalized(value: string): string[] {
   return value.split(' ').filter(Boolean)
+}
+
+function dedupeTokens(tokens: string[]): string[] {
+  return Array.from(new Set(tokens))
+}
+
+function filterTokens(tokens: string[]): string[] {
+  return dedupeTokens(tokens.filter(token => token.length >= TOKEN_MIN_LENGTH && !STOP_TOKENS.has(token)))
 }
 
 function commonPrefixLength(a: string, b: string): number {
@@ -106,26 +138,36 @@ function labelMatches(rowDescription: string, label: string): boolean {
     return true
   }
 
-  const rowTokens = tokenizeNormalized(normalizedRow).filter(token => token.length >= TOKEN_MIN_LENGTH)
-  const labelTokens = tokenizeNormalized(normalizedLabel).filter(token => token.length >= TOKEN_MIN_LENGTH)
-  if (rowTokens.length === 0 || labelTokens.length === 0) return false
+  const rawRowTokens = tokenizeNormalized(normalizedRow).filter(token => token.length >= TOKEN_MIN_LENGTH)
+  const rawLabelTokens = tokenizeNormalized(normalizedLabel).filter(token => token.length >= TOKEN_MIN_LENGTH)
+  if (rawRowTokens.length === 0 || rawLabelTokens.length === 0) return false
+
+  const rowTokens = filterTokens(rawRowTokens)
+  const labelTokens = filterTokens(rawLabelTokens)
+  const effectiveRowTokens = rowTokens.length > 0 ? rowTokens : dedupeTokens(rawRowTokens)
+  const effectiveLabelTokens = labelTokens.length > 0 ? labelTokens : dedupeTokens(rawLabelTokens)
+  if (effectiveRowTokens.length === 0 || effectiveLabelTokens.length === 0) return false
 
   let matchedTokens = 0
   let matchedLength = 0
   let labelLength = 0
 
-  for (const labelToken of labelTokens) {
+  for (const labelToken of effectiveLabelTokens) {
     labelLength += labelToken.length
-    if (rowTokens.some(rowToken => tokensMatch(labelToken, rowToken))) {
+    if (effectiveRowTokens.some(rowToken => tokensMatch(labelToken, rowToken))) {
       matchedTokens += 1
       matchedLength += labelToken.length
     }
   }
 
   if (matchedTokens === 0) return false
-  if (rowTokens.length === 1 && rowTokens[0].length >= TOKEN_MIN_LENGTH) return true
+  if (effectiveLabelTokens.length === 1) return true
+  if (effectiveRowTokens.length === 1) return true
 
   const coverage = labelLength === 0 ? 0 : matchedLength / labelLength
+  if (effectiveLabelTokens.length === 2) {
+    return matchedTokens >= 2 || coverage >= 0.8
+  }
   return matchedTokens >= 2 || coverage >= 0.4
 }
 
