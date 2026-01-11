@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
-    "vercel-build": "prisma migrate deploy && prisma generate && next build --turbopack",
+    "vercel-build": "DATABASE_URL=$DIRECT_URL prisma migrate deploy && prisma generate && next build --turbopack",
     "start": "next start",
     "test": "vitest run"
   },
@@ -14,6 +14,7 @@
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.57.4",
     "decimal.js": "^10.6.0",
+    "jose": "^5.10.0",
     "next": "^15.5.9",
     "papaparse": "^5.5.3",
     "plaid": "^29.0.0",
