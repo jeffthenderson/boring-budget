@@ -400,7 +400,7 @@ export async function processCSVImport(
       category = matchedDefinition?.category || category
       isRecurringInstance = true
       recurringDefinitionId = match.definitionId
-      let projectedId = match.projectedTransactionId
+      let projectedId: string | undefined = match.projectedTransactionId || undefined
       if (!projectedId) {
         const closest = findClosestProjectedTransaction(
           projectedTransactions.filter(tx => !projectedToDelete.has(tx.id)),
@@ -408,7 +408,9 @@ export async function processCSVImport(
           row.parsedDate,
           matchAmount
         )
-        projectedId = closest?.id
+        if (closest) {
+          projectedId = closest.id
+        }
       }
       if (projectedId) {
         projectedToDelete.add(projectedId)

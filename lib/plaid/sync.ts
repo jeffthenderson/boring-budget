@@ -319,7 +319,7 @@ async function processAddedTransactions(
             }
             isRecurringInstance = true
             recurringDefinitionId = match.definitionId
-            let projectedId = match.projectedTransactionId
+            let projectedId: string | undefined = match.projectedTransactionId || undefined
             if (!projectedId) {
               const closest = findClosestProjectedTransaction(
                 projected,
@@ -327,7 +327,9 @@ async function processAddedTransactions(
                 date,
                 amount
               )
-              projectedId = closest?.id
+              if (closest) {
+                projectedId = closest.id
+              }
             }
             if (projectedId) {
               projectedToDelete.add(projectedId)
