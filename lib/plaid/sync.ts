@@ -105,6 +105,19 @@ export async function syncPlaidTransactions(accountId: string): Promise<SyncResu
 
   console.log(`  - After filtering: added=${filteredAdded.length}, modified=${filteredModified.length}, removed=${filteredRemoved.length}`)
 
+  // Log all transactions received for debugging (before account filtering)
+  if (allAdded.length > 0 && allAdded.length <= 50) {
+    console.log('  - All transactions from Plaid (before account filter):')
+    for (const tx of allAdded) {
+      console.log(`    ${tx.date} | ${tx.name} | $${tx.amount} | account_id: ${tx.account_id} | category: ${tx.personal_finance_category?.primary}/${tx.personal_finance_category?.detailed}`)
+    }
+  } else if (allAdded.length > 50) {
+    console.log(`  - Too many transactions to log (${allAdded.length}), logging first 20:`)
+    for (const tx of allAdded.slice(0, 20)) {
+      console.log(`    ${tx.date} | ${tx.name} | $${tx.amount} | account_id: ${tx.account_id} | category: ${tx.personal_finance_category?.primary}/${tx.personal_finance_category?.detailed}`)
+    }
+  }
+
   // Process added transactions
   if (filteredAdded.length > 0) {
     const addResult = await processAddedTransactions(account, filteredAdded)
@@ -145,6 +158,18 @@ export async function syncPlaidTransactions(accountId: string): Promise<SyncResu
   } catch (error) {
     console.error('Error matching recurring transactions after Plaid sync:', error)
     result.errors.push(error instanceof Error ? error.message : 'Failed to match recurring transactions')
+  }
+
+  // Summary log
+  console.log(`Plaid sync complete for account ${accountId}:`)
+  console.log(`  - Added: ${result.added}`)
+  console.log(`  - Modified: ${result.modified}`)
+  console.log(`  - Removed: ${result.removed}`)
+  console.log(`  - Skipped duplicates: ${result.skippedDuplicates}`)
+  console.log(`  - Skipped transfers: ${result.skippedTransfers}`)
+  console.log(`  - Matched recurring: ${result.matchedRecurring}`)
+  if (result.errors.length > 0) {
+    console.log(`  - Errors: ${result.errors.join(', ')}`)
   }
 
   revalidatePath('/')
@@ -246,6 +271,7 @@ async function processAddedTransactions(
           if (!existing.accountId) {
             transactionsToBackfillAccountId.push(existing.id)
           }
+          console.log(`  [SKIP DUPLICATE] ${tx.name || tx.merchant_name} | $${tx.amount} | externalId: ${tx.transaction_id}`)
           result.skippedDuplicates++
           continue
         }
@@ -256,18 +282,20 @@ async function processAddedTransactions(
           detailed: tx.personal_finance_category.detailed,
         } : null
 
-        if (isTransferCategory(plaidCategory)) {
-          result.skippedTransfers++
-          continue
-        }
-
-        // Normalize data
+        // Normalize data early so we can log it
         const date = new Date(tx.date)
         const description = tx.name || tx.merchant_name || 'Unknown'
         const subDescription = tx.merchant_name && tx.name !== tx.merchant_name ? tx.merchant_name : undefined
 
+        if (isTransferCategory(plaidCategory)) {
+          console.log(`  [SKIP TRANSFER - category] ${description} | $${tx.amount} | category: ${plaidCategory?.primary}/${plaidCategory?.detailed}`)
+          result.skippedTransfers++
+          continue
+        }
+
         // Also check if description indicates a transfer (fallback)
         if (isTransferDescription(description)) {
+          console.log(`  [SKIP TRANSFER - description] ${description} | $${tx.amount}`)
           result.skippedTransfers++
           continue
         }
