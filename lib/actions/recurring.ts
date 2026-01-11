@@ -213,17 +213,24 @@ async function generateProjectedTransactionsForDefinition(
     where: {
       periodId,
       recurringDefinitionId: definitionId,
-      status: 'projected',
-      source: 'recurring',
     },
-    select: { date: true },
+    select: { date: true, status: true },
   })
 
-  const existingDates = new Set(existing.map(tx => tx.date.toISOString().split('T')[0]))
+  const existingProjectedDates = new Set<string>()
+  const existingPostedDates = new Set<string>()
+  for (const tx of existing) {
+    const dateKey = tx.date.toISOString().split('T')[0]
+    if (tx.status === 'projected') {
+      existingProjectedDates.add(dateKey)
+    } else {
+      existingPostedDates.add(dateKey)
+    }
+  }
 
   for (const date of dates) {
     const dateKey = date.toISOString().split('T')[0]
-    if (existingDates.has(dateKey)) continue
+    if (existingProjectedDates.has(dateKey) || existingPostedDates.has(dateKey)) continue
     await prisma.transaction.create({
       data: {
         periodId,
