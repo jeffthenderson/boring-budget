@@ -369,7 +369,7 @@ export async function matchExistingImportsForPeriod(
   })
 
   if (postedRecurring.length > 0) {
-    let remainingPlaceholders: ProjectedTransaction[] = await prisma.transaction.findMany({
+    const placeholderRows = await prisma.transaction.findMany({
       where: {
         periodId: period.id,
         recurringDefinitionId: { not: null },
@@ -378,6 +378,10 @@ export async function matchExistingImportsForPeriod(
       },
       select: { id: true, recurringDefinitionId: true, date: true, amount: true, description: true },
     })
+    let remainingPlaceholders: ProjectedTransaction[] = placeholderRows.map(row => ({
+      ...row,
+      recurringDefinitionId: row.recurringDefinitionId as string,
+    }))
 
     const placeholdersToDelete = new Set<string>()
     for (const posted of postedRecurring) {
