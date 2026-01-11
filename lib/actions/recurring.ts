@@ -7,6 +7,7 @@ import { normalizeDescription, buildCompositeDescription } from '@/lib/utils/imp
 import { getExpenseAmount } from '@/lib/utils/transaction-amounts'
 import { isRecurringCategory } from '@/lib/constants/categories'
 import {
+  findClosestProjectedTransaction,
   getBestRecurringMatch,
   matchAgainstDefinitions,
   type ProjectedTransaction,
@@ -356,6 +357,48 @@ export async function matchExistingImportsForPeriod(
     })
 
     matched++
+  }
+
+  const postedRecurring = await prisma.transaction.findMany({
+    where: {
+      periodId: period.id,
+      recurringDefinitionId: { not: null },
+      status: { not: 'projected' },
+    },
+    select: { id: true, recurringDefinitionId: true, date: true, amount: true },
+  })
+
+  if (postedRecurring.length > 0) {
+    let remainingPlaceholders: ProjectedTransaction[] = await prisma.transaction.findMany({
+      where: {
+        periodId: period.id,
+        recurringDefinitionId: { not: null },
+        status: 'projected',
+        source: 'recurring',
+      },
+      select: { id: true, recurringDefinitionId: true, date: true, amount: true, description: true },
+    })
+
+    const placeholdersToDelete = new Set<string>()
+    for (const posted of postedRecurring) {
+      const definitionId = posted.recurringDefinitionId
+      if (!definitionId) continue
+      const closest = findClosestProjectedTransaction(
+        remainingPlaceholders,
+        definitionId,
+        posted.date,
+        posted.amount
+      )
+      if (!closest) continue
+      placeholdersToDelete.add(closest.id)
+      remainingPlaceholders = remainingPlaceholders.filter(item => item.id !== closest.id)
+    }
+
+    if (placeholdersToDelete.size > 0) {
+      await prisma.transaction.deleteMany({
+        where: { id: { in: Array.from(placeholdersToDelete) } },
+      })
+    }
   }
 
   if (options?.revalidate !== false) {
