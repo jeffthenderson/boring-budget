@@ -5,6 +5,7 @@ import { getCurrentUser } from './user'
 import { revalidatePath } from 'next/cache'
 import { normalizeDescription, buildCompositeDescription } from '@/lib/utils/import/normalizer'
 import { getExpenseAmount } from '@/lib/utils/transaction-amounts'
+import { isRecurringCategory } from '@/lib/constants/categories'
 import {
   getBestRecurringMatch,
   matchAgainstDefinitions,
@@ -289,7 +290,7 @@ export async function matchExistingImportsForPeriod(
   const importTransactions = period.transactions.filter(tx => (
     tx.source === 'import'
     && !tx.recurringDefinitionId
-    && tx.category === 'Uncategorized'
+    && (tx.category === 'Uncategorized' || isRecurringCategory(tx.category))
     && !tx.isIgnored
   ))
 

@@ -12,7 +12,7 @@ import {
   isDateInPeriod,
 } from '@/lib/utils/import/normalizer'
 import { detectTransfers, type RawRow } from '@/lib/utils/import/transfer-detector'
-import { getBestRecurringMatch, matchAgainstDefinitions } from '@/lib/utils/import/recurring-matcher'
+import { findClosestProjectedTransaction, getBestRecurringMatch, matchAgainstDefinitions } from '@/lib/utils/import/recurring-matcher'
 import { ColumnMapping } from '@/lib/utils/import/csv-parser'
 import { getCurrentOrCreatePeriod } from './period'
 import { getExpenseAmount } from '@/lib/utils/transaction-amounts'
@@ -387,7 +387,8 @@ export async function processCSVImport(
     let match = null as ReturnType<typeof getBestRecurringMatch>
 
     if (definitions.length > 0) {
-      match = getBestRecurringMatch(importedRow, projectedTransactions, definitions)
+      const availableProjected = projectedTransactions.filter(tx => !projectedToDelete.has(tx.id))
+      match = getBestRecurringMatch(importedRow, availableProjected, definitions)
       if (!match) {
         match = matchAgainstDefinitions(importedRow, definitions, period.year, period.month)
       }
@@ -399,8 +400,18 @@ export async function processCSVImport(
       category = matchedDefinition?.category || category
       isRecurringInstance = true
       recurringDefinitionId = match.definitionId
-      if (match.projectedTransactionId) {
-        projectedToDelete.add(match.projectedTransactionId)
+      let projectedId = match.projectedTransactionId
+      if (!projectedId) {
+        const closest = findClosestProjectedTransaction(
+          projectedTransactions.filter(tx => !projectedToDelete.has(tx.id)),
+          match.definitionId,
+          row.parsedDate,
+          matchAmount
+        )
+        projectedId = closest?.id
+      }
+      if (projectedId) {
+        projectedToDelete.add(projectedId)
       }
     } else {
       const mappingRule = mappingRulesByNormalized.get(row.normalizedDescription)

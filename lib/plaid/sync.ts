@@ -5,7 +5,7 @@ import { plaidClient } from './client'
 import { decryptAccessToken } from './encryption'
 import { isTransferCategory, isTransferDescription } from './category-map'
 import { getCurrentOrCreatePeriod, getOrCreatePeriodForDate } from '@/lib/actions/period'
-import { getBestRecurringMatch, matchAgainstDefinitions } from '@/lib/utils/import/recurring-matcher'
+import { findClosestProjectedTransaction, getBestRecurringMatch, matchAgainstDefinitions } from '@/lib/utils/import/recurring-matcher'
 import { computeHashKey, normalizeDescription } from '@/lib/utils/import/normalizer'
 import { revalidatePath } from 'next/cache'
 import type { Transaction as PlaidTransaction, RemovedTransaction } from 'plaid'
@@ -296,7 +296,9 @@ async function processAddedTransactions(
             parsedDescription: description,
           }
 
-          const projected = projectedTransactions.map(t => ({
+          const projected = projectedTransactions
+            .filter(t => !projectedToDelete.has(t.id))
+            .map(t => ({
             id: t.id,
             recurringDefinitionId: t.recurringDefinitionId!,
             date: t.date,
@@ -317,8 +319,18 @@ async function processAddedTransactions(
             }
             isRecurringInstance = true
             recurringDefinitionId = match.definitionId
-            if (match.projectedTransactionId) {
-              projectedToDelete.add(match.projectedTransactionId)
+            let projectedId = match.projectedTransactionId
+            if (!projectedId) {
+              const closest = findClosestProjectedTransaction(
+                projected,
+                match.definitionId,
+                date,
+                amount
+              )
+              projectedId = closest?.id
+            }
+            if (projectedId) {
+              projectedToDelete.add(projectedId)
             }
           }
         }

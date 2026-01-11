@@ -3,6 +3,7 @@ import { normalizeDescription } from './normalizer'
 export interface RecurringDefinition {
   id: string
   merchantLabel: string
+  displayLabel?: string | null
   nominalAmount: number
   category: string
 }
@@ -33,6 +34,137 @@ export interface RecurringMatch {
   amountDiffPercent: number
 }
 
+const TOKEN_MIN_LENGTH = 4
+const TOKEN_PREFIX_MATCH = 4
+
+function tokenizeNormalized(value: string): string[] {
+  return value.split(' ').filter(Boolean)
+}
+
+function commonPrefixLength(a: string, b: string): number {
+  const max = Math.min(a.length, b.length)
+  let i = 0
+  while (i < max && a[i] === b[i]) {
+    i += 1
+  }
+  return i
+}
+
+function levenshteinDistance(a: string, b: string): number {
+  if (a === b) return 0
+  if (!a.length) return b.length
+  if (!b.length) return a.length
+
+  const matrix: number[][] = Array.from({ length: a.length + 1 }, () => [])
+  for (let i = 0; i <= a.length; i += 1) {
+    matrix[i][0] = i
+  }
+  for (let j = 0; j <= b.length; j += 1) {
+    matrix[0][j] = j
+  }
+
+  for (let i = 1; i <= a.length; i += 1) {
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + cost
+      )
+    }
+  }
+
+  return matrix[a.length][b.length]
+}
+
+function tokensMatch(labelToken: string, rowToken: string): boolean {
+  if (labelToken === rowToken) return true
+
+  if (labelToken.length >= TOKEN_MIN_LENGTH && rowToken.length >= TOKEN_MIN_LENGTH) {
+    if (labelToken.startsWith(rowToken) || rowToken.startsWith(labelToken)) {
+      return true
+    }
+    if (commonPrefixLength(labelToken, rowToken) >= TOKEN_PREFIX_MATCH) {
+      return true
+    }
+
+    const maxLen = Math.max(labelToken.length, rowToken.length)
+    if (maxLen >= 6 && levenshteinDistance(labelToken, rowToken) <= 2) {
+      return true
+    }
+  }
+
+  return false
+}
+
+function labelMatches(rowDescription: string, label: string): boolean {
+  const normalizedRow = normalizeDescription(rowDescription)
+  const normalizedLabel = normalizeDescription(label)
+
+  if (!normalizedRow || !normalizedLabel) return false
+  if (normalizedRow.includes(normalizedLabel) || normalizedLabel.includes(normalizedRow)) {
+    return true
+  }
+
+  const rowTokens = tokenizeNormalized(normalizedRow).filter(token => token.length >= TOKEN_MIN_LENGTH)
+  const labelTokens = tokenizeNormalized(normalizedLabel).filter(token => token.length >= TOKEN_MIN_LENGTH)
+  if (rowTokens.length === 0 || labelTokens.length === 0) return false
+
+  let matchedTokens = 0
+  let matchedLength = 0
+  let labelLength = 0
+
+  for (const labelToken of labelTokens) {
+    labelLength += labelToken.length
+    if (rowTokens.some(rowToken => tokensMatch(labelToken, rowToken))) {
+      matchedTokens += 1
+      matchedLength += labelToken.length
+    }
+  }
+
+  if (matchedTokens === 0) return false
+  if (rowTokens.length === 1 && rowTokens[0].length >= TOKEN_MIN_LENGTH) return true
+
+  const coverage = labelLength === 0 ? 0 : matchedLength / labelLength
+  return matchedTokens >= 2 || coverage >= 0.4
+}
+
+function matchesDefinitionLabel(rowDescription: string, definition: RecurringDefinition): boolean {
+  const labels = [definition.merchantLabel, definition.displayLabel].filter(Boolean) as string[]
+  return labels.some(label => labelMatches(rowDescription, label))
+}
+
+export function findClosestProjectedTransaction(
+  projectedTransactions: ProjectedTransaction[],
+  definitionId: string,
+  targetDate: Date,
+  targetAmount: number
+): ProjectedTransaction | null {
+  const candidates = projectedTransactions.filter(tx => tx.recurringDefinitionId === definitionId)
+  if (candidates.length === 0) return null
+
+  const sameSign = targetAmount !== 0
+    ? candidates.filter(tx => Math.sign(tx.amount) === Math.sign(targetAmount))
+    : candidates
+  const usable = sameSign.length > 0 ? sameSign : candidates
+
+  let best = usable[0]
+  let bestScore = Number.POSITIVE_INFINITY
+  for (const candidate of usable) {
+    const dateDiffDays = Math.abs(
+      (candidate.date.getTime() - targetDate.getTime()) / (1000 * 60 * 60 * 24)
+    )
+    const amountDiff = Math.abs(Math.abs(candidate.amount) - Math.abs(targetAmount))
+    const score = dateDiffDays * 100 + amountDiff
+    if (score < bestScore) {
+      bestScore = score
+      best = candidate
+    }
+  }
+
+  return best ?? null
+}
+
 /**
  * Attempt to match an imported row to existing recurring projections
  */
@@ -49,10 +181,7 @@ export function findRecurringMatches(
     const definition = recurringDefinitions.find(d => d.id === projected.recurringDefinitionId)
     if (!definition) continue
 
-    const defLabel = normalizeDescription(definition.merchantLabel)
-
-    // Check if merchant label is contained in description
-    if (!rowDesc.includes(defLabel)) continue
+    if (!matchesDefinitionLabel(rowDesc, definition)) continue
 
     // Check date difference (within 5 days)
     const daysDiff = Math.abs(
@@ -125,10 +254,7 @@ export function matchAgainstDefinitions(
   const rowDesc = importedRow.normalizedDescription
 
   for (const definition of recurringDefinitions) {
-    const defLabel = normalizeDescription(definition.merchantLabel)
-
-    // Check if merchant label is contained in description
-    if (!rowDesc.includes(defLabel)) continue
+    if (!matchesDefinitionLabel(rowDesc, definition)) continue
 
     // Check amount difference (within 10%)
     const amountDiff = Math.abs(importedRow.normalizedAmount - definition.nominalAmount)
