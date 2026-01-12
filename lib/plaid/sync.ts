@@ -105,6 +105,19 @@ export async function syncPlaidTransactions(accountId: string): Promise<SyncResu
 
   console.log(`  - After filtering: added=${filteredAdded.length}, modified=${filteredModified.length}, removed=${filteredRemoved.length}`)
 
+  // Log all transactions received for debugging (before account filtering)
+  if (allAdded.length > 0 && allAdded.length <= 50) {
+    console.log('  - All transactions from Plaid (before account filter):')
+    for (const tx of allAdded) {
+      console.log(`    ${tx.date} | ${tx.name} | $${tx.amount} | account_id: ${tx.account_id} | category: ${tx.personal_finance_category?.primary}/${tx.personal_finance_category?.detailed}`)
+    }
+  } else if (allAdded.length > 50) {
+    console.log(`  - Too many transactions to log (${allAdded.length}), logging first 20:`)
+    for (const tx of allAdded.slice(0, 20)) {
+      console.log(`    ${tx.date} | ${tx.name} | $${tx.amount} | account_id: ${tx.account_id} | category: ${tx.personal_finance_category?.primary}/${tx.personal_finance_category?.detailed}`)
+    }
+  }
+
   // Process added transactions
   if (filteredAdded.length > 0) {
     const addResult = await processAddedTransactions(account, filteredAdded)
@@ -145,6 +158,18 @@ export async function syncPlaidTransactions(accountId: string): Promise<SyncResu
   } catch (error) {
     console.error('Error matching recurring transactions after Plaid sync:', error)
     result.errors.push(error instanceof Error ? error.message : 'Failed to match recurring transactions')
+  }
+
+  // Summary log
+  console.log(`Plaid sync complete for account ${accountId}:`)
+  console.log(`  - Added: ${result.added}`)
+  console.log(`  - Modified: ${result.modified}`)
+  console.log(`  - Removed: ${result.removed}`)
+  console.log(`  - Skipped duplicates: ${result.skippedDuplicates}`)
+  console.log(`  - Skipped transfers: ${result.skippedTransfers}`)
+  console.log(`  - Matched recurring: ${result.matchedRecurring}`)
+  if (result.errors.length > 0) {
+    console.log(`  - Errors: ${result.errors.join(', ')}`)
   }
 
   revalidatePath('/')
@@ -246,6 +271,7 @@ async function processAddedTransactions(
           if (!existing.accountId) {
             transactionsToBackfillAccountId.push(existing.id)
           }
+          console.log(`  [SKIP DUPLICATE] ${tx.name || tx.merchant_name} | $${tx.amount} | externalId: ${tx.transaction_id}`)
           result.skippedDuplicates++
           continue
         }
@@ -256,20 +282,25 @@ async function processAddedTransactions(
           detailed: tx.personal_finance_category.detailed,
         } : null
 
-        if (isTransferCategory(plaidCategory)) {
-          result.skippedTransfers++
-          continue
-        }
-
-        // Normalize data
+        // Normalize data early so we can log it
         const date = new Date(tx.date)
         const description = tx.name || tx.merchant_name || 'Unknown'
         const subDescription = tx.merchant_name && tx.name !== tx.merchant_name ? tx.merchant_name : undefined
 
-        // Also check if description indicates a transfer (fallback)
-        if (isTransferDescription(description)) {
+        // Check if this should be ignored as a transfer
+        let isIgnored = false
+        let ignoreReason: string | null = null
+
+        if (isTransferCategory(plaidCategory)) {
+          isIgnored = true
+          ignoreReason = `Transfer: ${plaidCategory?.primary}/${plaidCategory?.detailed}`
+          console.log(`  [IGNORED TRANSFER - category] ${description} | $${tx.amount} | category: ${plaidCategory?.primary}/${plaidCategory?.detailed}`)
           result.skippedTransfers++
-          continue
+        } else if (isTransferDescription(description)) {
+          isIgnored = true
+          ignoreReason = `Transfer pattern in description`
+          console.log(`  [IGNORED TRANSFER - description] ${description} | $${tx.amount}`)
+          result.skippedTransfers++
         }
 
         // Plaid amounts: positive = money leaving account (expense), negative = money entering (income/refund)
@@ -290,12 +321,12 @@ async function processAddedTransactions(
           normalizedDesc
         )
 
-        // Try to match recurring
+        // Try to match recurring (skip for ignored transactions)
         let category = 'Uncategorized'
         let isRecurringInstance = false
         let recurringDefinitionId: string | undefined
 
-        if (definitions.length > 0 && amount > 0) {
+        if (!isIgnored && definitions.length > 0 && amount > 0) {
           const importedRow = {
             id: tx.transaction_id,
             parsedDate: date,
@@ -345,8 +376,8 @@ async function processAddedTransactions(
           }
         }
 
-        // Check category mapping rules if not matched to recurring
-        if (!isRecurringInstance) {
+        // Check category mapping rules if not matched to recurring (skip for ignored)
+        if (!isIgnored && !isRecurringInstance) {
           const mappingRule = mappingRulesByNormalized.get(normalizedDesc)
           if (mappingRule && mappingRule.category !== 'Uncategorized') {
             category = mappingRule.category
@@ -360,13 +391,15 @@ async function processAddedTransactions(
           description,
           subDescription,
           amount,
-          category,
+          category: isIgnored ? 'Uncategorized' : category,  // Don't categorize ignored transactions
           status: tx.pending ? 'pending' : 'posted',
           source: 'import',
           externalId: tx.transaction_id,
           sourceImportHash: hashKey,
-          isRecurringInstance,
-          recurringDefinitionId,
+          isRecurringInstance: isIgnored ? false : isRecurringInstance,  // Don't mark ignored as recurring
+          recurringDefinitionId: isIgnored ? undefined : recurringDefinitionId,
+          isIgnored,
+          ignoreReason,
         })
       }
 

@@ -111,6 +111,7 @@ model Transaction {
   status                  String                @default("posted") // "projected" | "posted"
   source                  String                // "manual" | "recurring" | "import"
   isIgnored               Boolean               @default(false)
+  ignoreReason            String?               // Why this transaction was ignored (e.g., "Transfer: TRANSFER_OUT/CREDIT_CARD")
   isRecurringInstance     Boolean               @default(false)
   recurringDefinitionId   String?
   recurringDefinition     RecurringDefinition?  @relation(fields: [recurringDefinitionId], references: [id], onDelete: SetNull)

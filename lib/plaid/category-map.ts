@@ -155,9 +155,16 @@ export function isTransferCategory(category: PlaidCategory | null): boolean {
   // Check detailed category for transfer-related keywords
   if (category.detailed) {
     const detailed = category.detailed.toUpperCase();
-    if (detailed.includes('TRANSFER') ||
-        detailed.includes('CREDIT_CARD') ||  // Credit card payments are internal transfers
-        detailed === 'CREDIT CARD') {
+    // Check for transfer patterns
+    if (detailed.includes('TRANSFER')) {
+      return true;
+    }
+    // Only filter credit card PAYMENTS (internal transfers to pay off credit card)
+    // This should NOT filter regular purchases made with a credit card
+    // Plaid uses LOAN_PAYMENTS_CREDIT_CARD or similar for credit card payments
+    if (detailed.includes('CREDIT_CARD') &&
+        (category.primary === 'LOAN_PAYMENTS' ||
+         detailed.includes('PAYMENT'))) {
       return true;
     }
   }
