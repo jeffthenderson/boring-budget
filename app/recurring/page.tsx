@@ -6,6 +6,7 @@ import { Input } from '../components/Input'
 import { Button } from '../components/Button'
 import { formatCurrency, parseCurrency } from '@/lib/utils/currency'
 import { formatDateDisplay } from '@/lib/utils/dates'
+import { unlinkTransactionFromRecurring } from '@/lib/actions/transactions'
 import Link from 'next/link'
 import { TopNav } from '../components/TopNav'
 
@@ -43,6 +44,7 @@ export default function RecurringPage() {
   const [savingDefinitionIds, setSavingDefinitionIds] = useState<Set<string>>(new Set())
   const [matchingOpenPeriods, setMatchingOpenPeriods] = useState(false)
   const [matchSummary, setMatchSummary] = useState<{ matched: number; periodsChecked: number } | null>(null)
+  const [unlinkingTransactions, setUnlinkingTransactions] = useState<Set<string>>(new Set())
 
   const [merchantLabel, setMerchantLabel] = useState('')
   const [displayLabel, setDisplayLabel] = useState('')
@@ -161,6 +163,44 @@ export default function RecurringPage() {
       setSavingSuggestionKeys(prev => {
         const next = new Set(prev)
         next.delete(suggestion.key)
+        return next
+      })
+    }
+  }
+
+  async function handleResetSuggestions() {
+    if (!confirm('Reset recurring suggestions? This will bring back dismissed items.')) return
+
+    try {
+      const res = await fetch('/api/recurring/suggestions', { method: 'DELETE' })
+      if (!res.ok) {
+        throw new Error('Failed to reset suggestions')
+      }
+      setHiddenSuggestions(new Set())
+      setDontShowAgain({})
+      setExpandedSuggestions(new Set())
+      await loadSuggestions()
+    } catch (error) {
+      alert('Failed to reset recurring suggestions.')
+      console.error(error)
+    }
+  }
+
+  async function handleUnlinkRecurring(transactionId: string) {
+    setUnlinkingTransactions(prev => new Set([...prev, transactionId]))
+    try {
+      const result = await unlinkTransactionFromRecurring(transactionId)
+      if (!result.success && result.error) {
+        alert(result.error)
+      }
+      await loadDefinitions()
+    } catch (error) {
+      alert('Failed to unlink recurring transaction.')
+      console.error(error)
+    } finally {
+      setUnlinkingTransactions(prev => {
+        const next = new Set(prev)
+        next.delete(transactionId)
         return next
       })
     }
@@ -351,12 +391,20 @@ export default function RecurringPage() {
             <p className="text-sm text-monday-3pm">
               Monthly candidates detected from imports.
             </p>
-            <Button
-              variant="secondary"
-              onClick={() => setCollapsedSuggestions(!collapsedSuggestions)}
-            >
-              {collapsedSuggestions ? 'Show' : 'Hide'}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="secondary"
+                onClick={handleResetSuggestions}
+              >
+                Reset suggestions
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setCollapsedSuggestions(!collapsedSuggestions)}
+              >
+                {collapsedSuggestions ? 'Show' : 'Hide'}
+              </Button>
+            </div>
           </div>
 
           {!collapsedSuggestions && (
@@ -570,92 +618,141 @@ export default function RecurringPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {definitions.map((def: any) => (
-                <div
-                  key={def.id}
-                  className="border-b border-line last:border-b-0 py-3"
-                >
-                  <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-4 items-start md:items-center">
-                    <div>
-                      <div className="font-medium">{def.displayLabel || def.merchantLabel}</div>
-                      {(def.displayLabel && def.displayLabel !== def.merchantLabel) && (
-                        <div className="text-xs text-monday-3pm">Matches: {def.merchantLabel}</div>
-                      )}
-                      <div className="text-xs text-monday-3pm">{def.category}</div>
-                    </div>
-                    <div>{formatCurrency(def.nominalAmount)}</div>
-                    <div className="text-sm text-monday-3pm capitalize">{def.frequency}</div>
-                    <div>
-                      <span className="rounded-full bg-accent-soft px-2 py-1 mono-label">
-                        {def.active ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-2 md:justify-end">
-                      <Button
-                        variant="secondary"
-                        onClick={() => startEdit(def)}
-                        disabled={savingDefinitionIds.has(def.id) || savingForm}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        onClick={() => toggleActive(def.id, def.active)}
-                        disabled={savingDefinitionIds.has(def.id) || savingForm}
-                      >
-                        {savingDefinitionIds.has(def.id)
-                          ? 'Updating...'
-                          : def.active
-                            ? 'Deactivate'
-                            : 'Activate'}
-                      </Button>
-                      <Button
-                        variant="danger"
-                        onClick={() => handleDelete(def.id)}
-                        disabled={savingDefinitionIds.has(def.id) || savingForm}
-                      >
-                        {savingDefinitionIds.has(def.id) ? 'Deleting...' : 'Delete'}
-                      </Button>
-                    </div>
-                  </div>
+              {definitions.map((def: any) => {
+                const linkedTransactions = def.linkedTransactions ?? []
 
-                  {editingId === def.id && (
-                    <form onSubmit={handleSubmit} className="mt-4 space-y-4 border border-line bg-surface-muted p-4">
-                      {renderRecurringFields({
-                        merchantLabel,
-                        displayLabel,
-                        category,
-                        nominalAmount,
-                        frequency,
-                        dayOfMonth,
-                        dayOfWeek,
-                        firstDay,
-                        secondDay,
-                        onMerchantLabelChange: (val) => {
-                          setMerchantLabel(val)
-                          setDisplayLabel((prev) => (prev === '' || prev === merchantLabel ? val : prev))
-                        },
-                        onDisplayLabelChange: setDisplayLabel,
-                        onCategoryChange: setCategory,
-                        onNominalAmountChange: setNominalAmount,
-                        onFrequencyChange: setFrequency,
-                        onDayOfMonthChange: setDayOfMonth,
-                        onDayOfWeekChange: setDayOfWeek,
-                        onFirstDayChange: setFirstDay,
-                        onSecondDayChange: setSecondDay,
-                      })}
-                      <div className="flex flex-wrap gap-2">
-                        <Button type="submit" disabled={savingForm}>
-                          {savingForm ? 'Saving...' : 'Save changes'}
+                return (
+                  <div
+                    key={def.id}
+                    id={`recurring-${def.id}`}
+                    className="border-b border-line last:border-b-0 py-3"
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-4 items-start md:items-center">
+                      <div>
+                        <div className="font-medium">{def.displayLabel || def.merchantLabel}</div>
+                        {(def.displayLabel && def.displayLabel !== def.merchantLabel) && (
+                          <div className="text-xs text-monday-3pm">Matches: {def.merchantLabel}</div>
+                        )}
+                        <div className="text-xs text-monday-3pm">{def.category}</div>
+                      </div>
+                      <div>{formatCurrency(def.nominalAmount)}</div>
+                      <div className="text-sm text-monday-3pm capitalize">{def.frequency}</div>
+                      <div>
+                        <span className="rounded-full bg-accent-soft px-2 py-1 mono-label">
+                          {def.active ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2 md:justify-end">
+                        <Button
+                          variant="secondary"
+                          onClick={() => startEdit(def)}
+                          disabled={savingDefinitionIds.has(def.id) || savingForm}
+                        >
+                          Edit
                         </Button>
-                        <Button variant="secondary" type="button" onClick={cancelEdit} disabled={savingForm}>
-                          Cancel
+                        <Button
+                          variant="secondary"
+                          onClick={() => toggleActive(def.id, def.active)}
+                          disabled={savingDefinitionIds.has(def.id) || savingForm}
+                        >
+                          {savingDefinitionIds.has(def.id)
+                            ? 'Updating...'
+                            : def.active
+                              ? 'Deactivate'
+                              : 'Activate'}
+                        </Button>
+                        <Button
+                          variant="danger"
+                          onClick={() => handleDelete(def.id)}
+                          disabled={savingDefinitionIds.has(def.id) || savingForm}
+                        >
+                          {savingDefinitionIds.has(def.id) ? 'Deleting...' : 'Delete'}
                         </Button>
                       </div>
-                    </form>
-                  )}
-                </div>
-              ))}
+                    </div>
+
+                    {linkedTransactions.length > 0 ? (
+                      <div className="mt-3 rounded-lg border border-line bg-white px-3 py-3">
+                        <div className="mono-label">Linked transactions</div>
+                        <div className="mt-2 space-y-2">
+                          {linkedTransactions.map((tx: any) => {
+                            const txAmount = tx.displayAmount ?? tx.amount
+                            const txTone = txAmount < 0 ? 'text-rose-600' : ''
+                            const periodLabel = tx.period ? `${tx.period.month}/${tx.period.year}` : ''
+                            const periodHref = tx.period ? `/?year=${tx.period.year}&month=${tx.period.month}` : '/'
+
+                            return (
+                              <div
+                                key={tx.id}
+                                className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-sm"
+                              >
+                                <div className="min-w-0">
+                                  <Link
+                                    href={periodHref}
+                                    className="font-medium text-foreground hover:underline"
+                                  >
+                                    {formatDateDisplay(tx.date)} · {tx.description}
+                                  </Link>
+                                  {periodLabel && (
+                                    <div className="text-xs text-monday-3pm">Period: {periodLabel}</div>
+                                  )}
+                                </div>
+                                <div className={`tabular-nums ${txTone}`}>{formatCurrency(txAmount)}</div>
+                                <Button
+                                  variant="secondary"
+                                  onClick={() => handleUnlinkRecurring(tx.id)}
+                                  disabled={unlinkingTransactions.has(tx.id)}
+                                  className="px-3 py-1.5 text-[10px]"
+                                >
+                                  {unlinkingTransactions.has(tx.id) ? 'Unlinking...' : 'Unlink'}
+                                </Button>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-3 text-xs text-monday-3pm">No linked transactions yet.</div>
+                    )}
+
+                    {editingId === def.id && (
+                      <form onSubmit={handleSubmit} className="mt-4 space-y-4 border border-line bg-surface-muted p-4">
+                        {renderRecurringFields({
+                          merchantLabel,
+                          displayLabel,
+                          category,
+                          nominalAmount,
+                          frequency,
+                          dayOfMonth,
+                          dayOfWeek,
+                          firstDay,
+                          secondDay,
+                          onMerchantLabelChange: (val) => {
+                            setMerchantLabel(val)
+                            setDisplayLabel((prev) => (prev === '' || prev === merchantLabel ? val : prev))
+                          },
+                          onDisplayLabelChange: setDisplayLabel,
+                          onCategoryChange: setCategory,
+                          onNominalAmountChange: setNominalAmount,
+                          onFrequencyChange: setFrequency,
+                          onDayOfMonthChange: setDayOfMonth,
+                          onDayOfWeekChange: setDayOfWeek,
+                          onFirstDayChange: setFirstDay,
+                          onSecondDayChange: setSecondDay,
+                        })}
+                        <div className="flex flex-wrap gap-2">
+                          <Button type="submit" disabled={savingForm}>
+                            {savingForm ? 'Saving...' : 'Save changes'}
+                          </Button>
+                          <Button variant="secondary" type="button" onClick={cancelEdit} disabled={savingForm}>
+                            Cancel
+                          </Button>
+                        </div>
+                      </form>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )}
         </Card>

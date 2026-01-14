@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { syncPlaidTransactions } from '@/lib/plaid/sync'
 import { getAccountByItemId } from '@/lib/actions/plaid'
+import { verifyPlaidWebhook } from '@/lib/plaid/webhook-verification'
 
 // Plaid webhook types
 type WebhookType = 'TRANSACTIONS' | 'ITEM' | 'AUTH' | 'ASSETS' | 'INVESTMENTS_TRANSACTIONS' | 'HOLDINGS'
@@ -33,7 +34,39 @@ interface PlaidWebhook {
 
 export async function POST(request: Request) {
   try {
-    const webhook: PlaidWebhook = await request.json()
+    const rawBody = await request.text()
+    const signedJwt = request.headers.get('plaid-verification') ?? request.headers.get('Plaid-Verification')
+    const shouldVerify = process.env.PLAID_ENV === 'production' || process.env.PLAID_WEBHOOK_VERIFICATION === 'true'
+
+    if (shouldVerify) {
+      if (!signedJwt) {
+        return NextResponse.json({ received: false, error: 'Missing Plaid-Verification header.' }, { status: 401 })
+      }
+      try {
+        await verifyPlaidWebhook({ rawBody, signedJwt })
+      } catch (verifyError) {
+        return NextResponse.json(
+          { received: false, error: verifyError instanceof Error ? verifyError.message : 'Webhook verification failed.' },
+          { status: 401 }
+        )
+      }
+    } else if (signedJwt) {
+      try {
+        await verifyPlaidWebhook({ rawBody, signedJwt })
+      } catch (verifyError) {
+        return NextResponse.json(
+          { received: false, error: verifyError instanceof Error ? verifyError.message : 'Webhook verification failed.' },
+          { status: 401 }
+        )
+      }
+    }
+
+    let webhook: PlaidWebhook
+    try {
+      webhook = JSON.parse(rawBody)
+    } catch (parseError) {
+      return NextResponse.json({ received: false, error: 'Invalid JSON payload.' }, { status: 400 })
+    }
 
     // Find the account associated with this item
     const account = await getAccountByItemId(webhook.item_id)

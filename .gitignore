@@ -40,6 +40,7 @@ dev.log*
 *.xlsx
 /samples/
 Amazon Order Page/
+audit docs/
 
 # vercel
 .vercel

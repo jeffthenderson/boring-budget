@@ -136,6 +136,7 @@ export async function importUserData(
           charityPercent: data.preallocationSettings.charityPercent,
           retirementAmount: data.preallocationSettings.retirementAmount,
           otherSavingsAmount: data.preallocationSettings.otherSavingsAmount,
+          hideInternalTransfers: data.preallocationSettings.hideInternalTransfers ?? true,
         },
       })
       stats.preallocationSettings = 1
@@ -213,6 +214,8 @@ export async function importUserData(
           periodId: newPeriodId,
           accountId: tx.accountId ? accountIdMap.get(tx.accountId) : null,
           date: new Date(tx.date),
+          authorizedDate: tx.authorizedDate ? new Date(tx.authorizedDate) : null,
+          postedDate: tx.postedDate ? new Date(tx.postedDate) : null,
           description: tx.description,
           subDescription: tx.subDescription,
           userDescription: tx.userDescription,
@@ -221,6 +224,7 @@ export async function importUserData(
           status: tx.status,
           source: tx.source,
           isIgnored: tx.isIgnored,
+          isInternalTransfer: tx.isInternalTransfer ?? false,
           isRecurringInstance: tx.isRecurringInstance,
           recurringDefinitionId: tx.recurringDefinitionId
             ? recurringIdMap.get(tx.recurringDefinitionId)

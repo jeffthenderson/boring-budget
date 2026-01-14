@@ -69,7 +69,10 @@ export async function createCategoryMappingRule(data: {
         id: { in: matchingIds },
         period: { userId: user.id },
       },
-      data: { category: data.category },
+      data: {
+        category: data.category,
+        isInternalTransfer: data.category === 'Transfer',
+      },
     })
   }
 

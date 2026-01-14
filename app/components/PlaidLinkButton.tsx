@@ -35,6 +35,7 @@ export function PlaidLinkButton({
   const [linkToken, setLinkToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
+  const [isForceResyncing, setIsForceResyncing] = useState(false)
   const [isFixing, setIsFixing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -302,6 +303,33 @@ export function PlaidLinkButton({
     }
   }, [accountId, onSuccess])
 
+  const handleForceResync = useCallback(async () => {
+    if (!confirm('Force resync the last 90 days? This may take a minute.')) return
+
+    setIsForceResyncing(true)
+    setError(null)
+
+    try {
+      const res = await fetch('/api/plaid/force-resync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId, days: 90 }),
+      })
+
+      if (!res.ok) {
+        throw new Error('Force resync failed')
+      }
+
+      const result = await res.json()
+      console.log('Force resync result:', result)
+      onSuccess()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Force resync failed')
+    } finally {
+      setIsForceResyncing(false)
+    }
+  }, [accountId, onSuccess])
+
   // Handle unlink
   const handleUnlink = useCallback(async () => {
     if (!confirm(`Disconnect ${institutionName || 'bank'} from ${accountName}?`)) {
@@ -367,6 +395,15 @@ export function PlaidLinkButton({
               disabled={isSyncing}
             >
               {isSyncing ? 'Syncing...' : 'Sync Now'}
+            </Button>
+          )}
+          {!hasConnectionError && (
+            <Button
+              variant="outline"
+              onClick={handleForceResync}
+              disabled={isForceResyncing || isSyncing}
+            >
+              {isForceResyncing ? 'Resyncing...' : 'Force resync (90 days)'}
             </Button>
           )}
           <Button

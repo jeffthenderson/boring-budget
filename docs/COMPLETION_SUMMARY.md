@@ -1,5 +1,8 @@
 # Boring Budget - Project Completion Summary
 
+> Update (2026-01-04): The app now runs on Supabase Auth + Supabase Postgres, includes a full design refresh,
+> Plaid production syncing, and data export/import. See `docs/PROJECT_PROGRESS.md` for the current state.
+
 ## ✅ Phase 1: Core Budgeting App - COMPLETE
 
 All features from the original epic have been implemented:
@@ -21,7 +24,7 @@ All features from the original epic have been implemented:
 - TypeScript
 - Tailwind CSS (custom brand colors)
 - Prisma ORM
-- SQLite database
+- Supabase Postgres (with Supabase Auth)
 
 ## ✅ Phase 2: CSV Import Feature - COMPLETE
 
@@ -181,7 +184,7 @@ Throughout the app:
 - CSV parsing: Async with papaparse
 - Transfer detection: O(n²) but filtered to pending rows only
 - Deduplication: O(n) hash lookup
-- Database: SQLite with indexed queries
+- Database: Supabase Postgres with indexed queries
 - Server actions: Optimized with Prisma batching
 
 ## Dependencies Added
@@ -204,10 +207,8 @@ Per the spec, these are out of scope:
 - CSV import history view
 - Recurring confirmation UI (matches detected but no UI yet)
 - Pattern mining for new recurring merchants
-- Vendor API integrations (Plaid, etc.)
 - "Mark as recurring" bulk operations
 - Credit score tracking
-- Multi-user support
 - Mobile app
 
 ## How to Run

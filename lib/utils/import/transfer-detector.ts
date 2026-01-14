@@ -37,6 +37,7 @@ export interface RawRow {
   normalizedDescription: string
   normalizedAmount: number
   status: string
+  transferHint?: boolean
 }
 
 export interface TransferCandidate {
@@ -51,48 +52,39 @@ export interface TransferCandidate {
 export function isTransferCandidate(row: RawRow, allAccounts: Array<{ displayAlias?: string; last4?: string }>): boolean {
   const desc = row.normalizedDescription
   const transferAmount = getTransferAmount(row)
+  const hasTransferKeyword = row.transferHint || TRANSFER_KEYWORDS.some(keyword => desc.includes(keyword))
+  const hasAccountReference = allAccounts.some(acc =>
+    (acc.last4 && desc.includes(acc.last4)) ||
+    (acc.displayAlias && desc.includes(acc.displayAlias.toLowerCase()))
+  )
+
+  if (!hasTransferKeyword) return false
 
   // Credit card payment from bank side
   if (row.accountType === 'bank') {
-    // Check for credit card payment keywords
-    if (TRANSFER_KEYWORDS.some(keyword => desc.includes(keyword))) {
-      // Check if description contains any known card last4
-      const hasCardReference = allAccounts.some(acc =>
-        acc.last4 && desc.includes(acc.last4)
-      )
-
-      if (hasCardReference) {
-        return true
-      }
-
-      // Check for generic credit card payment patterns
-      if (desc.includes('credit card') || desc.includes('visa') || desc.includes('mastercard')) {
-        return true
-      }
-    }
+    return hasAccountReference
   }
 
   // Credit card payment from card side
   if (row.accountType === 'credit_card' && transferAmount < 0) {
     // Negative amount on credit card with payment keywords
     if (PAYMENT_KEYWORDS.some(keyword => desc.includes(keyword))) {
-      return true
+      return hasAccountReference
     }
   }
 
   // Inter-account transfer
-  if (TRANSFER_KEYWORDS.some(keyword => desc.includes(keyword))) {
-    // Check if description contains any known account alias
-    const hasAccountReference = allAccounts.some(acc =>
-      acc.displayAlias && desc.includes(acc.displayAlias.toLowerCase())
-    )
+  return hasAccountReference
+}
 
-    if (hasAccountReference) {
-      return true
-    }
-  }
+function hasPaymentKeyword(row: RawRow): boolean {
+  const desc = row.normalizedDescription
+  return PAYMENT_KEYWORDS.some(keyword => desc.includes(keyword))
+}
 
-  return false
+function hasTransferKeyword(row: RawRow): boolean {
+  const desc = row.normalizedDescription
+  return Boolean(row.transferHint) || TRANSFER_KEYWORDS.some(keyword => desc.includes(keyword))
 }
 
 /**
@@ -114,6 +106,11 @@ export function pairCreditCardPayments(rows: RawRow[]): Map<string, TransferCand
       const amountMatch = Math.abs(Math.abs(getTransferAmount(bankRow)) - Math.abs(getTransferAmount(cardRow))) < 0.01
 
       if (!amountMatch) continue
+
+      // Require a payment or transfer keyword to reduce false matches
+      if (!hasPaymentKeyword(bankRow) && !hasPaymentKeyword(cardRow) && !hasTransferKeyword(bankRow) && !hasTransferKeyword(cardRow)) {
+        continue
+      }
 
       // Check if dates are within 3 days
       const daysDiff = Math.abs(bankRow.parsedDate.getTime() - cardRow.parsedDate.getTime()) / (1000 * 60 * 60 * 24)
@@ -167,12 +164,9 @@ export function pairInterAccountTransfers(rows: RawRow[]): Map<string, TransferC
       if (daysDiff > 1) continue
 
       // Check if at least one has transfer keywords
-      const hasTransferKeyword = TRANSFER_KEYWORDS.some(keyword =>
-        row1.normalizedDescription.includes(keyword) ||
-        row2.normalizedDescription.includes(keyword)
-      )
+      const hasTransferKeywordMatch = hasTransferKeyword(row1) || hasTransferKeyword(row2)
 
-      if (!hasTransferKeyword) continue
+      if (!hasTransferKeywordMatch) continue
 
       // We have a match!
       candidates.set(row1.id, {

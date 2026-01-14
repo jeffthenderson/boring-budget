@@ -164,6 +164,16 @@ export async function dismissRecurringSuggestion(key: string) {
   return { success: true }
 }
 
+export async function resetRecurringSuggestionDismissals() {
+  const user = await getCurrentUser()
+
+  await prisma.recurringSuggestionDismissal.deleteMany({
+    where: { userId: user.id },
+  })
+
+  return { success: true }
+}
+
 function buildRecurringSequences(occurrences: SuggestionOccurrence[]) {
   const byMonth = new Map<string, SuggestionOccurrence[]>()
 

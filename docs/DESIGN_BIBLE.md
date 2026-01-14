@@ -53,7 +53,7 @@ Tabs + chips:
 
 Inputs:
 - White background, thin border, mono label.
-- Focus ring in graphite.
+- Focus ring in accent-2.
 
 Tables:
 - Header labels in Azeret Mono, small size, spaced out.

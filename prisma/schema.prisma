@@ -35,6 +35,7 @@ model PreallocationSettings {
   charityPercent       Float    @default(0)
   retirementAmount     Float    @default(0)
   otherSavingsAmount   Float    @default(0)
+  hideInternalTransfers Boolean  @default(true)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 }
@@ -103,6 +104,8 @@ model Transaction {
   periodId                String
   period                  BudgetPeriod          @relation(fields: [periodId], references: [id], onDelete: Cascade)
   date                    DateTime
+  authorizedDate          DateTime?
+  postedDate              DateTime?
   description             String                // Raw description (immutable from import/manual)
   subDescription          String?               // Sub-description from CSV (if provided)
   userDescription         String?               // Optional note
@@ -112,6 +115,7 @@ model Transaction {
   source                  String                // "manual" | "recurring" | "import"
   isIgnored               Boolean               @default(false)
   ignoreReason            String?               // Why this transaction was ignored (e.g., "Transfer: TRANSFER_OUT/CREDIT_CARD")
+  isInternalTransfer      Boolean               @default(false)
   isRecurringInstance     Boolean               @default(false)
   recurringDefinitionId   String?
   recurringDefinition     RecurringDefinition?  @relation(fields: [recurringDefinitionId], references: [id], onDelete: SetNull)

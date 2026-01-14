@@ -18,12 +18,21 @@ Last updated: 2026-01-04
 - [x] Fix: Amazon Order link is grey (changed to blue accent)
 - [x] Fix: Recurring-essential budgets appear editable (disabled with helper text)
 
+### Design Refresh ✅
+- [x] Graphite + Rose visual system applied across the app
+- [x] Cheeky deadpan copy pass
+- [x] Custom SelectMenu + accent-2 highlights
+
+### Budget Visualization ✅
+- [x] Budget vs actual bars (category list + over/under emphasis)
+
 ### Plaid Production Launch ✅
 - [x] Production credentials configured
 - [x] MFA enforcement on login
 - [x] Link update mode for re-authentication
 - [x] Duplicate item detection
 - [x] Data disclosure consent dialog
+- [x] Self-serve password reset (secure, no user enumeration)
 
 ---
 
@@ -46,8 +55,6 @@ The LLM blocking issue is the biggest daily friction point.
 - Progress indicator should be subtle, near the button
 - Consider using a database queue or simple polling for background status
 
----
-
 ### Sprint 3: Mobile Nav + Account (2-3 days)
 
 | Item | Description |
@@ -57,9 +64,6 @@ The LLM blocking issue is the biggest daily friction point.
 | → Reset password | Via Supabase |
 | → MFA management | Enable/disable/re-enroll |
 | → Delete account | With confirmation |
-
-**Cut from scope:**
-- Forgot password screen — Supabase email recovery works, not needed
 
 ---
 
@@ -106,10 +110,7 @@ Items that need more definition or are lower priority.
 | Item | Status | Notes |
 |------|--------|-------|
 | Savings tracking | Needs definition | What's the use case? Transfers to savings? Goals? |
-| Budget vs actual as bars | Nice-to-have | Table works fine. Add to design refresh, not core roadmap. |
 | Amazon Subscribe & Save projections | Cut | Too niche. Users can add as recurring manually. |
-| Webhook signature verification | Security debt | Should do eventually, doesn't block users |
-| Design refresh | Someday | See `docs/DESIGN_REFRESH_PLAN.md` |
 | Optimistic UI / prefetch | Someday | Performance polish |
 | Type `Period`/`Settings` in BudgetDashboard | Tech debt | Minor cleanup |
 
@@ -119,17 +120,16 @@ Items that need more definition or are lower priority.
 
 These were considered and rejected:
 
-1. **Forgot password screen** — Supabase handles via email link. Over-engineering.
-2. **Full rule builder for categorization** — Just show existing rules with delete. Don't build a complex engine.
-3. **Subscribe & Save projections** — Niche Amazon feature. Manual recurring works.
-4. **Budget visualization as bars** — Preference, not problem. Save for design refresh.
+1. **Full rule builder for categorization** — Just show existing rules with delete. Don't build a complex engine.
+2. **Subscribe & Save projections** — Niche Amazon feature. Manual recurring works.
 
 ---
 
 ## Security/Ops (Parallel Track)
 
-- [ ] Webhook signature verification
+- [x] Webhook signature verification
 - [ ] E2E auth flow smoke test (invite, password reset, MFA enrollment)
+- [ ] MFA recovery playbook (Supabase admin for now; admin view later)
 - [ ] CSV import tests
 
 ---
@@ -164,7 +164,7 @@ Original feedback that informed this roadmap:
 9. Savings tracking → Backlog (needs definition)
 10. ~~Refund/reimbursement chips~~ → Sprint 2
 11. ~~LLM categorization slow/blocking~~ → Sprint 2
-12. Budget vs actual as bars → Backlog (nice-to-have)
+12. ~~Budget vs actual as bars~~ → Done
 13. ~~Budget amount disappears on update~~ → Sprint 1 ✅
 14. ~~Annual recurring option~~ → Sprint 6
 15. ~~Recurring-essential budgets shouldn't be editable~~ → Sprint 1 ✅

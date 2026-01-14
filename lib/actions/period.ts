@@ -347,6 +347,7 @@ export async function suggestCategoryBudgets(
       periodId: { in: priorPeriodIds },
       status: 'posted',
       isIgnored: false,
+      isInternalTransfer: false,
     },
     include: {
       importBatch: {
@@ -386,6 +387,7 @@ export async function suggestCategoryBudgets(
       periodId,
       category: { in: [...RECURRING_CATEGORIES] },
       isIgnored: false,
+      isInternalTransfer: false,
     },
     include: {
       importBatch: {

@@ -1,5 +1,7 @@
 # Plaid Transactions Integration Plan
 
+Status update: integration is live in production; use `docs/Plaid Production Onboarding Checklist.md` for current state.
+
 This document outlines the plan to integrate Plaid's Transactions API into Boring Budget, enabling users to sync transactions directly from their bank accounts instead of manually uploading CSV files.
 
 ## Overview
@@ -113,7 +115,7 @@ model PlaidWebhookLog {
 
 **1.3 Security Considerations**
 - [x] Encrypt access tokens at rest (AES-256-GCM encryption)
-- [ ] Implement webhook signature verification (TODO)
+- [x] Implement webhook signature verification (Plaid-Verification JWT + body hash)
 - [ ] Add rate limiting to webhook endpoint (TODO)
 
 ---
@@ -200,7 +202,7 @@ model PlaidWebhookLog {
   - `ITEM.ERROR` → Log error
   - `ITEM.PENDING_EXPIRATION` → Log warning
   - `ITEM.USER_PERMISSION_REVOKED` → Clear credentials
-- [ ] Implement webhook signature verification (TODO)
+- [x] Implement webhook signature verification (Plaid-Verification JWT + body hash)
 
 **4.2 Webhook Processing**
 - [x] Log all webhooks to PlaidWebhookLog
@@ -337,7 +339,7 @@ Revalidate cache: /, /import
 ## Security Checklist
 
 - [x] Access tokens encrypted at rest (AES-256-GCM)
-- [ ] Webhook signature verification
+- [x] Webhook signature verification
 - [ ] Rate limiting on webhook endpoint
 - [ ] HTTPS only for webhook URL
 - [x] Audit logging for all Plaid operations (PlaidWebhookLog)
@@ -452,7 +454,6 @@ The following files have been created/modified:
 5. **Set up ngrok or similar** for webhook testing locally
 
 6. **Optional improvements** (marked TODO in phases above):
-   - Webhook signature verification
    - Sync status endpoint
    - Toast notifications
    - Re-authentication flow

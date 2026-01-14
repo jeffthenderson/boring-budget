@@ -17,6 +17,7 @@ import { ColumnMapping } from '@/lib/utils/import/csv-parser'
 import { getCurrentOrCreatePeriod } from './period'
 import { getExpenseAmount } from '@/lib/utils/transaction-amounts'
 import { getCurrentUser } from './user'
+import { markInternalTransfersForPeriodByUser } from './transfers'
 
 export interface ProcessedRow {
   lineNumber: number
@@ -31,6 +32,7 @@ export interface ProcessedRow {
   hashKey: string
   status: 'pending' | 'imported' | 'duplicate' | 'ignored' | 'out_of_period'
   ignoreReason?: string
+  isInternalTransfer?: boolean
 }
 
 export interface ImportSummary {
@@ -216,6 +218,7 @@ export async function processCSVImport(
         hashKey,
         status: inPeriod ? (matchedIgnoreRule ? 'ignored' : 'pending') : 'out_of_period',
         ignoreReason: matchedIgnoreRule ? 'ignore_rule' : undefined,
+        isInternalTransfer: false,
       }
 
       processedRows.push(processed)
@@ -282,8 +285,7 @@ export async function processCSVImport(
     const tempId = `temp_${i}`
 
     if (row.status === 'pending' && transferCandidates.has(tempId)) {
-      row.status = 'ignored'
-      row.ignoreReason = transferCandidates.get(tempId)!.reason
+      row.isInternalTransfer = true
     }
   }
 
@@ -369,6 +371,27 @@ export async function processCSVImport(
     let category = 'Uncategorized'
     let isRecurringInstance = false
     let recurringDefinitionId: string | undefined
+    const isInternalTransfer = Boolean(row.isInternalTransfer)
+
+    if (isInternalTransfer) {
+      return {
+        periodId,
+        date: row.parsedDate,
+        postedDate: row.parsedDate,
+        description: row.parsedDescription,
+        subDescription: row.parsedSubDescription || undefined,
+        amount: row.normalizedAmount,
+        category: 'Transfer',
+        status: 'posted',
+        source: 'import',
+        importBatchId: batch.id,
+        externalId: row.externalId,
+        sourceImportHash: row.hashKey,
+        isRecurringInstance: false,
+        recurringDefinitionId: undefined,
+        isInternalTransfer: true,
+      }
+    }
 
     const matchAmount = getExpenseAmount({
       amount: row.normalizedAmount,
@@ -425,6 +448,7 @@ export async function processCSVImport(
     return {
       periodId,
       date: row.parsedDate,
+      postedDate: row.parsedDate,
       description: row.parsedDescription,
       subDescription: row.parsedSubDescription || undefined,
       amount: row.normalizedAmount,
@@ -436,12 +460,14 @@ export async function processCSVImport(
       sourceImportHash: row.hashKey,
       isRecurringInstance,
       recurringDefinitionId,
+      isInternalTransfer: false,
     }
   })
 
   const ignoredTransactionsToCreate = ignoredRows.map(row => ({
     periodId,
     date: row.parsedDate,
+    postedDate: row.parsedDate,
     description: row.parsedDescription,
     subDescription: row.parsedSubDescription || undefined,
     amount: row.normalizedAmount,
@@ -453,6 +479,7 @@ export async function processCSVImport(
     sourceImportHash: row.hashKey,
     isRecurringInstance: false,
     isIgnored: true,
+    isInternalTransfer: false,
   }))
 
   if (transactionsToCreate.length > 0) {
@@ -495,6 +522,8 @@ export async function processCSVImport(
     )
     await prisma.$transaction(updates)
   }
+
+  await markInternalTransfersForPeriodByUser(user.id, period.id, { revalidate: false })
 
   if (pendingRows.length > 0) {
     await prisma.rawImportRow.updateMany({

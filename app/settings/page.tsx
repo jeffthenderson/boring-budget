@@ -13,6 +13,7 @@ export default function SettingsPage() {
   const [charityPercent, setCharityPercent] = useState('0')
   const [retirementAmount, setRetirementAmount] = useState('0')
   const [otherSavingsAmount, setOtherSavingsAmount] = useState('0')
+  const [hideInternalTransfers, setHideInternalTransfers] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [ignoreRules, setIgnoreRules] = useState<any[]>([])
@@ -36,6 +37,7 @@ export default function SettingsPage() {
         setCharityPercent(data.charityPercent.toString())
         setRetirementAmount(data.retirementAmount.toString())
         setOtherSavingsAmount(data.otherSavingsAmount.toString())
+        setHideInternalTransfers(data.hideInternalTransfers ?? true)
       })
 
     loadIgnoreRules()
@@ -59,6 +61,7 @@ export default function SettingsPage() {
         charityPercent: parseCurrency(charityPercent),
         retirementAmount: parseCurrency(retirementAmount),
         otherSavingsAmount: parseCurrency(otherSavingsAmount),
+        hideInternalTransfers,
       }),
     })
 
@@ -272,6 +275,15 @@ export default function SettingsPage() {
             onChange={setOtherSavingsAmount}
             required
           />
+          <label className="flex items-center gap-2 text-sm text-foreground">
+            <input
+              type="checkbox"
+              checked={hideInternalTransfers}
+              onChange={(e) => setHideInternalTransfers(e.target.checked)}
+              className="h-4 w-4 cursor-pointer accent-accent-2"
+            />
+            Hide internal transfers (recommended)
+          </label>
 
           <Button type="submit" disabled={saving}>
             {saving ? 'Saving...' : saved ? 'Saved' : 'Save settings'}

@@ -14,6 +14,7 @@ export const CATEGORIES = BUDGET_CATEGORIES
 export const TRANSACTION_CATEGORIES = [
   ...BUDGET_CATEGORIES,
   'Income',
+  'Transfer',
   'Uncategorized',
 ] as const
 
@@ -39,6 +40,7 @@ export const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
   'Other - Fun': { bg: 'bg-lime-100', text: 'text-lime-800' },
   'Other - Responsible': { bg: 'bg-teal-100', text: 'text-teal-800' },
   'Income': { bg: 'bg-cyan-100', text: 'text-cyan-800' },
+  'Transfer': { bg: 'bg-violet-100', text: 'text-violet-800' },
   'Uncategorized': { bg: 'bg-slate-100', text: 'text-slate-700' },
 }
 

@@ -9,6 +9,7 @@ import { getExpenseAmount } from '@/lib/utils/transaction-amounts'
 import { getCurrentUser } from './user'
 
 const LINK_MATCH_WINDOW_DAYS = 365
+const LINK_SEARCH_WINDOW_DAYS = 90
 const LINK_MAX_CANDIDATES = 15
 const INCOME_MATCH_WINDOW_DAYS = 30
 const INCOME_MATCH_PERCENT = 0.1
@@ -21,6 +22,7 @@ function getRemainingLinkAmount(
     amount: number
     source?: string | null
     importBatch?: { account?: { type?: string | null; invertAmounts?: boolean | null } | null } | null
+    account?: { type?: string | null; invertAmounts?: boolean | null } | null
     linksFrom?: { type: string; amount: number }[]
     linksTo?: { type: string; amount: number }[]
   },
@@ -57,12 +59,14 @@ export async function addManualTransaction(periodId: string, data: {
     data: {
       periodId: period.id,
       date: data.date,
+      postedDate: data.date,
       description: data.description,
       amount: data.amount,
       category: data.category,
       status: 'posted',
       source: 'manual',
       isRecurringInstance: false,
+      isInternalTransfer: data.category === 'Transfer',
     },
   })
 
@@ -165,6 +169,12 @@ export async function updateTransactionCategory(
     // If changing to non-recurring, unlink
     const wasRecurring = transaction.isRecurringInstance
     const isNowRecurring = isRecurringCategory(newCategory)
+    const isTransferCategory = newCategory === 'Transfer'
+    const internalTransferUpdate = isTransferCategory
+      ? { isInternalTransfer: true }
+      : transaction.isInternalTransfer
+        ? { isInternalTransfer: false }
+        : {}
 
     if (wasRecurring && !isNowRecurring) {
       // Unlink from recurring
@@ -174,6 +184,7 @@ export async function updateTransactionCategory(
           category: newCategory,
           isRecurringInstance: false,
           recurringDefinitionId: null,
+          ...internalTransferUpdate,
         },
       })
 
@@ -184,7 +195,10 @@ export async function updateTransactionCategory(
     // The modal will handle the actual linking/creation
     await prisma.transaction.update({
       where: { id: transactionId },
-      data: { category: newCategory },
+      data: {
+        category: newCategory,
+        ...internalTransferUpdate,
+      },
     })
 
     const shouldSuggest = !options?.skipMappingSuggestion
@@ -359,6 +373,42 @@ export async function linkTransactionToRecurring(
     return { success: true }
   } catch (error: any) {
     console.error('Error linking transaction:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+export async function unlinkTransactionFromRecurring(
+  transactionId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const user = await getCurrentUser()
+    const transaction = await prisma.transaction.findFirst({
+      where: { id: transactionId, period: { userId: user.id } },
+    })
+
+    if (!transaction) {
+      return { success: false, error: 'Transaction not found' }
+    }
+
+    if (transaction.status === 'projected' && transaction.source === 'recurring') {
+      await prisma.transaction.delete({
+        where: { id: transaction.id },
+      })
+    } else {
+      await prisma.transaction.update({
+        where: { id: transaction.id },
+        data: {
+          recurringDefinitionId: null,
+          isRecurringInstance: false,
+        },
+      })
+    }
+
+    revalidatePath('/')
+    revalidatePath('/recurring')
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error unlinking recurring transaction:', error)
     return { success: false, error: error.message }
   }
 }
@@ -932,6 +982,7 @@ export async function getTransactionLinkCandidates(
     include: {
       period: { select: { userId: true } },
       importBatch: { include: { account: true } },
+      account: true,
       linksFrom: true,
       linksTo: true,
     },
@@ -968,6 +1019,7 @@ export async function getTransactionLinkCandidates(
     },
     include: {
       importBatch: { include: { account: true } },
+      account: true,
       linksFrom: { where: { type } },
       linksTo: { where: { type } },
     },
@@ -1027,7 +1079,8 @@ export async function getTransactionLinkCandidates(
 export async function searchTransactionLinkCandidates(
   transactionId: string,
   type: 'refund' | 'reimbursement',
-  query: string
+  query: string,
+  options?: { includeAllDates?: boolean }
 ): Promise<Array<{
   id: string
   date: string
@@ -1040,6 +1093,7 @@ export async function searchTransactionLinkCandidates(
   amountDelta: number
   dateDiffDays: number
   score: number
+  exactMatch: boolean
   linkedAmount: number
   remainingAmount: number
 }>> {
@@ -1052,6 +1106,7 @@ export async function searchTransactionLinkCandidates(
     include: {
       period: { select: { userId: true } },
       importBatch: { include: { account: true } },
+      account: true,
       linksFrom: true,
       linksTo: true,
     },
@@ -1066,6 +1121,9 @@ export async function searchTransactionLinkCandidates(
   if (targetExpense === 0) return []
   const targetIsCredit = targetExpense < 0
   const targetDate = transaction.date
+  const includeAllDates = options?.includeAllDates === true
+  const windowStart = new Date(targetDate.getTime() - LINK_SEARCH_WINDOW_DAYS * 24 * 60 * 60 * 1000)
+  const windowEnd = new Date(targetDate.getTime() + LINK_SEARCH_WINDOW_DAYS * 24 * 60 * 60 * 1000)
 
   const linkedIds = new Set<string>()
   for (const link of transaction.linksFrom) {
@@ -1077,6 +1135,7 @@ export async function searchTransactionLinkCandidates(
 
   const numericQuery = Math.abs(parseCurrency(trimmed))
   const hasNumeric = /[0-9]/.test(trimmed) && numericQuery > 0
+  const hasText = /[a-zA-Z]/.test(trimmed)
   if (trimmed.length < 2 && !hasNumeric) return []
 
   const orFilters: any[] = []
@@ -1102,10 +1161,12 @@ export async function searchTransactionLinkCandidates(
       id: { not: transactionId },
       status: 'posted',
       isIgnored: false,
+      ...(includeAllDates ? {} : { date: { gte: windowStart, lte: windowEnd } }),
       ...(orFilters.length > 0 ? { OR: orFilters } : {}),
     },
     include: {
       importBatch: { include: { account: true } },
+      account: true,
       linksFrom: { where: { type } },
       linksTo: { where: { type } },
     },
@@ -1140,7 +1201,13 @@ export async function searchTransactionLinkCandidates(
       const textMatch = normalizedQuery && normalizedCandidate
         ? normalizedCandidate.includes(normalizedQuery)
         : false
-      const score = amountDeltaForScore * 10 + dateDiffDays + (textMatch ? 0 : 20)
+      const exactMatch = hasNumeric && amountDeltaForScore <= 0.01
+      const amountWeight = hasNumeric ? 5 : 2
+      const dateWeight = hasNumeric ? 0.5 : 1
+      const textPenalty = hasText && !textMatch ? 10 : 0
+      const score = (exactMatch ? 0 : amountDeltaForScore * amountWeight)
+        + (dateDiffDays * dateWeight)
+        + textPenalty
 
       return {
         id: candidate.id,
@@ -1154,12 +1221,17 @@ export async function searchTransactionLinkCandidates(
         amountDelta,
         dateDiffDays,
         score,
+        exactMatch,
         linkedAmount,
         remainingAmount,
       }
     })
     .filter(Boolean)
-    .sort((a, b) => (a!.score - b!.score))
+    .sort((a, b) => {
+      if (a!.exactMatch !== b!.exactMatch) return a!.exactMatch ? -1 : 1
+      if (a!.score !== b!.score) return a!.score - b!.score
+      return a!.dateDiffDays - b!.dateDiffDays
+    })
     .slice(0, 50)
     .map(item => item!)
 
@@ -1182,6 +1254,7 @@ export async function createTransactionLink(
       include: {
         period: { select: { userId: true } },
         importBatch: { include: { account: true } },
+        account: true,
         linksFrom: { where: { type } },
         linksTo: { where: { type } },
       },

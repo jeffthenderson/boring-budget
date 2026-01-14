@@ -14,6 +14,7 @@ export interface ExportData {
     charityPercent: number
     retirementAmount: number
     otherSavingsAmount: number
+    hideInternalTransfers: boolean
   } | null
   accounts: Array<{
     id: string
@@ -45,6 +46,8 @@ export interface ExportData {
     periodId: string
     accountId: string | null
     date: string
+    authorizedDate: string | null
+    postedDate: string | null
     description: string
     subDescription: string | null
     userDescription: string | null
@@ -53,6 +56,7 @@ export interface ExportData {
     status: string
     source: string
     isIgnored: boolean
+    isInternalTransfer: boolean
     isRecurringInstance: boolean
     recurringDefinitionId: string | null
     externalId: string | null
@@ -211,6 +215,7 @@ export async function exportUserData(): Promise<ExportData> {
           charityPercent: preallocationSettings.charityPercent,
           retirementAmount: preallocationSettings.retirementAmount,
           otherSavingsAmount: preallocationSettings.otherSavingsAmount,
+          hideInternalTransfers: preallocationSettings.hideInternalTransfers ?? true,
         }
       : null,
     accounts: accounts.map((a) => ({
@@ -243,6 +248,8 @@ export async function exportUserData(): Promise<ExportData> {
       periodId: t.periodId,
       accountId: t.accountId,
       date: t.date.toISOString(),
+      authorizedDate: t.authorizedDate ? t.authorizedDate.toISOString() : null,
+      postedDate: t.postedDate ? t.postedDate.toISOString() : null,
       description: t.description,
       subDescription: t.subDescription,
       userDescription: t.userDescription,
@@ -251,6 +258,7 @@ export async function exportUserData(): Promise<ExportData> {
       status: t.status,
       source: t.source,
       isIgnored: t.isIgnored,
+      isInternalTransfer: t.isInternalTransfer,
       isRecurringInstance: t.isRecurringInstance,
       recurringDefinitionId: t.recurringDefinitionId,
       externalId: t.externalId,

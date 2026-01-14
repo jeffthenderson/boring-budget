@@ -21,6 +21,11 @@ export default function LoginPage() {
   const [inviteEmail, setInviteEmail] = useState('')
   const [invitePassword, setInvitePassword] = useState('')
   const [invitePasswordConfirm, setInvitePasswordConfirm] = useState('')
+  const [showPasswordReset, setShowPasswordReset] = useState(false)
+  const [resetEmail, setResetEmail] = useState('')
+  const [resetMessage, setResetMessage] = useState('')
+  const [resetCooldown, setResetCooldown] = useState(0)
+  const [resetLoading, setResetLoading] = useState(false)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -28,9 +33,6 @@ export default function LoginPage() {
     const url = new URL(window.location.href)
     const hashParams = new URLSearchParams(url.hash.slice(1))
     const searchParams = url.searchParams
-
-    const type = hashParams.get('type') ?? searchParams.get('type')
-    if (type !== 'invite' && type !== 'recovery') return
 
     const errorCode = hashParams.get('error') ?? searchParams.get('error')
     const errorDescription = hashParams.get('error_description') ?? searchParams.get('error_description')
@@ -45,6 +47,12 @@ export default function LoginPage() {
     const accessToken = hashParams.get('access_token')
     const refreshToken = hashParams.get('refresh_token')
     const code = searchParams.get('code')
+    const typeParam = hashParams.get('type') ?? searchParams.get('type')
+    const hasAuthParams = Boolean(code || (accessToken && refreshToken))
+    const type = typeParam === 'invite' || typeParam === 'recovery'
+      ? typeParam
+      : (hasAuthParams ? 'recovery' : null)
+    if (!type) return
 
     setLoading(true)
     setError('')
@@ -56,13 +64,19 @@ export default function LoginPage() {
 
     const exchangeSession = async () => {
       if (code) {
-        return supabase.auth.exchangeCodeForSession(code)
+        const exchange = await supabase.auth.exchangeCodeForSession(code)
+        if (!exchange.error && exchange.data?.session) {
+          return exchange
+        }
       }
       if (accessToken && refreshToken) {
-        return supabase.auth.setSession({
+        const session = await supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
         })
+        if (!session.error && session.data?.session) {
+          return session
+        }
       }
       return supabase.auth.getSession()
     }
@@ -91,6 +105,16 @@ export default function LoginPage() {
     cleanUrl.searchParams.delete('error_description')
     window.history.replaceState({}, document.title, cleanUrl.pathname + cleanUrl.search)
   }, [])
+
+  useEffect(() => {
+    if (resetCooldown <= 0) return
+
+    const timer = setInterval(() => {
+      setResetCooldown(prev => Math.max(0, prev - 1))
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [resetCooldown])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -226,6 +250,40 @@ export default function LoginPage() {
     }
   }
 
+  function handleTogglePasswordReset(nextState?: boolean) {
+    setShowPasswordReset(prev => {
+      const next = nextState ?? !prev
+      if (next) {
+        setResetEmail(email)
+        setResetMessage('')
+      }
+      return next
+    })
+    setError('')
+  }
+
+  async function handlePasswordReset(e: React.FormEvent) {
+    e.preventDefault()
+
+    if (!resetEmail.trim() || resetCooldown > 0) return
+
+    setResetLoading(true)
+    setResetMessage('')
+
+    try {
+      const supabase = createSupabaseBrowserClient()
+      await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
+        redirectTo: `${window.location.origin}/login`,
+      })
+    } catch (_err) {
+      // Always respond with the same message to avoid user enumeration.
+    } finally {
+      setResetLoading(false)
+      setResetCooldown(30)
+      setResetMessage('If that address exists, a reset link is on the way. Hold your applause.')
+    }
+  }
+
   return (
     <div className="min-h-screen px-4 py-10 md:py-16">
       <div className="mx-auto w-full max-w-md space-y-6">
@@ -263,7 +321,54 @@ export default function LoginPage() {
               <div className="text-sm text-monday-3pm">{error}</div>
             )}
           </form>
-        ) : !needsMfa ? (
+        ) : needsMfa ? (
+          <form onSubmit={handleVerifyMfa} className="space-y-4">
+            <Input
+              label="Authentication code"
+              type="text"
+              inputMode="numeric"
+              value={mfaCode}
+              onChange={setMfaCode}
+              required
+            />
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Verifying...' : 'Verify MFA'}
+            </Button>
+            {error && (
+              <div className="text-sm text-monday-3pm">{error}</div>
+            )}
+          </form>
+        ) : showPasswordReset ? (
+          <form onSubmit={handlePasswordReset} className="space-y-4">
+            <Input
+              label="Email"
+              type="email"
+              value={resetEmail}
+              onChange={setResetEmail}
+              required
+            />
+            <Button type="submit" disabled={resetLoading || resetCooldown > 0}>
+              {resetLoading
+                ? 'Sending...'
+                : resetCooldown > 0
+                  ? `Try again in ${resetCooldown}s`
+                  : 'Send reset link'}
+            </Button>
+            <div className="text-xs text-monday-3pm">
+              If the address exists, you will get a link. The latest one wins.
+            </div>
+            {resetMessage && (
+              <div className="text-sm text-monday-3pm">{resetMessage}</div>
+            )}
+            <button
+              type="button"
+              onClick={() => handleTogglePasswordReset(false)}
+              className="text-xs text-monday-3pm underline underline-offset-4"
+            >
+              Back to sign in
+            </button>
+          </form>
+        ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
               label="Email"
@@ -284,26 +389,16 @@ export default function LoginPage() {
                 {loading ? 'Checking...' : 'Sign in'}
               </Button>
             </div>
-            <div className="text-xs text-monday-3pm">
-              Invite-only access. Ask nicely.
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-monday-3pm">
+              <span>Invite-only access. Ask nicely.</span>
+              <button
+                type="button"
+                onClick={() => handleTogglePasswordReset(true)}
+                className="text-accent-2 underline underline-offset-4"
+              >
+                Forgot password?
+              </button>
             </div>
-            {error && (
-              <div className="text-sm text-monday-3pm">{error}</div>
-            )}
-          </form>
-        ) : (
-          <form onSubmit={handleVerifyMfa} className="space-y-4">
-            <Input
-              label="Authentication code"
-              type="text"
-              inputMode="numeric"
-              value={mfaCode}
-              onChange={setMfaCode}
-              required
-            />
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Verifying...' : 'Verify MFA'}
-            </Button>
             {error && (
               <div className="text-sm text-monday-3pm">{error}</div>
             )}

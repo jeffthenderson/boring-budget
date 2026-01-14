@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Card } from './Card'
 import { Input } from './Input'
 import { Button } from './Button'
-import { Table } from './Table'
 import { InlineCategoryEditor } from './InlineCategoryEditor'
 import { InlineNoteEditor } from './InlineNoteEditor'
 import { SelectMenu } from './SelectMenu'
@@ -32,6 +32,7 @@ import {
   linkTransactionToRecurring,
   createRecurringFromTransaction,
   getActiveRecurringDefinitions,
+  unlinkTransactionFromRecurring,
   setTransactionIgnored,
   createTransactionLink,
   removeTransactionLink,
@@ -119,7 +120,9 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
   const [linkSearchResults, setLinkSearchResults] = useState<Record<string, any[]>>({})
   const [linkSearchLoading, setLinkSearchLoading] = useState<Set<string>>(new Set())
   const [linkSearchErrors, setLinkSearchErrors] = useState<Record<string, string>>({})
+  const [linkSearchIncludeOlder, setLinkSearchIncludeOlder] = useState<Record<string, boolean>>({})
   const linkSearchTimers = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({})
+  const [unlinkingRecurring, setUnlinkingRecurring] = useState<Set<string>>(new Set())
 
   // Multi-select state
   const [multiSelectMode, setMultiSelectMode] = useState(false)
@@ -127,6 +130,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null)
   const [expandedTransactions, setExpandedTransactions] = useState<Set<string>>(new Set())
   const [mobileCategoryPicker, setMobileCategoryPicker] = useState<string | null>(null)
+  const hideInternalTransfers = settings.hideInternalTransfers ?? true
 
   // Recurring modal state
   const [recurringModalOpen, setRecurringModalOpen] = useState(false)
@@ -152,7 +156,9 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
   })
 
   // Calculate category budgets and actuals
-  const activeTransactions = period.transactions.filter((t: any) => !t.isIgnored)
+  const activeTransactions = period.transactions.filter(
+    (t: any) => !t.isIgnored && !t.isInternalTransfer
+  )
   const expenseTransactions = activeTransactions.filter((t: any) => !isIncomeCategory(t.category))
 
   const getLinkTotal = (
@@ -193,6 +199,11 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
     return { category, budgeted, actual, difference }
   })
 
+  const budgetBarMax = Math.max(
+    1,
+    ...categoryData.map(c => Math.max(c.budgeted, c.actual))
+  )
+
   const totalBudgeted = categoryData.reduce((sum, c) => sum + c.budgeted, 0)
   const totalActual = categoryData.reduce((sum, c) => sum + c.actual, 0)
   const totalDifference = totalActual - totalBudgeted
@@ -202,17 +213,19 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
   const normalizedSearch = transactionSearch.trim().toLowerCase()
   const filteredTransactions = period.transactions.filter((t: any) => {
     if (!showIgnored && t.isIgnored) return false
+    if (hideInternalTransfers && t.isInternalTransfer) return false
     if (filterCategory !== 'all' && t.category !== filterCategory) return false
     if (filterStatus !== 'all' && t.status !== filterStatus) return false
     if (!normalizedSearch) return true
 
+    const displayAmount = getExpenseAmount(t)
     const haystack = [
       t.description,
       t.subDescription,
       t.category,
       t.userDescription,
-      formatCurrency(t.amount),
-      t.amount?.toString?.(),
+      formatCurrency(displayAmount),
+      displayAmount?.toString?.(),
       formatDateDisplay(t.date),
       formatDate(t.date),
     ]
@@ -244,7 +257,7 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
           comparison = (a.t.category || '').localeCompare(b.t.category || '')
           break
         case 'amount':
-          comparison = a.t.amount - b.t.amount
+          comparison = getExpenseAmount(a.t) - getExpenseAmount(b.t)
           break
         case 'status':
           comparison = (a.t.status || '').localeCompare(b.t.status || '')
@@ -677,6 +690,25 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
     }
   }
 
+  async function handleUnlinkRecurring(transactionId: string) {
+    setUnlinkingRecurring(prev => new Set([...prev, transactionId]))
+    try {
+      const result = await unlinkTransactionFromRecurring(transactionId)
+      if (!result.success && result.error) {
+        alert(result.error)
+      }
+      router.refresh()
+    } catch (error: any) {
+      alert(error?.message || 'Failed to unlink recurring schedule.')
+    } finally {
+      setUnlinkingRecurring(prev => {
+        const next = new Set(prev)
+        next.delete(transactionId)
+        return next
+      })
+    }
+  }
+
   function handleSortChange(nextKey: 'date' | 'description' | 'category' | 'amount' | 'status') {
     if (sortKey === nextKey) {
       setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'))
@@ -987,7 +1019,8 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
     transactionId: string,
     type: 'refund' | 'reimbursement',
     query: string,
-    primaryRemainingOverride?: number
+    primaryRemainingOverride?: number,
+    includeAllDatesOverride?: boolean
   ) {
     const key = `${transactionId}:${type}`
     const trimmed = query.trim()
@@ -1007,7 +1040,10 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
 
     setLinkSearchLoading(prev => new Set([...prev, key]))
     try {
-      const results = await searchTransactionLinkCandidates(transactionId, type, trimmed)
+      const includeAllDates = includeAllDatesOverride ?? (linkSearchIncludeOlder[key] ?? false)
+      const results = await searchTransactionLinkCandidates(transactionId, type, trimmed, {
+        includeAllDates,
+      })
       setLinkSearchResults(prev => ({ ...prev, [key]: results }))
       seedLinkAmounts(transactionId, type, results, primaryRemainingOverride)
     } catch (error: any) {
@@ -1044,6 +1080,11 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
         delete next[key]
         return next
       })
+      setLinkSearchIncludeOlder(prev => {
+        const next = { ...prev }
+        delete next[key]
+        return next
+      })
       setLinkSearchLoading(prev => {
         const next = new Set(prev)
         next.delete(key)
@@ -1053,8 +1094,19 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
     }
 
     linkSearchTimers.current[key] = setTimeout(() => {
-      runLinkSearch(transactionId, type, value)
+      runLinkSearch(transactionId, type, value, undefined, linkSearchIncludeOlder[key] ?? false)
     }, 300)
+  }
+
+  function toggleLinkSearchRange(transactionId: string, type: 'refund' | 'reimbursement') {
+    const key = `${transactionId}:${type}`
+    const nextIncludeOlder = !(linkSearchIncludeOlder[key] ?? false)
+    setLinkSearchIncludeOlder(prev => ({ ...prev, [key]: nextIncludeOlder }))
+
+    const query = linkSearchQueries[key] ?? ''
+    if (shouldRunLinkSearch(query)) {
+      runLinkSearch(transactionId, type, query, undefined, nextIncludeOlder)
+    }
   }
 
   async function toggleLinkCandidates(transactionId: string, type: 'refund' | 'reimbursement') {
@@ -1144,7 +1196,13 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
           : undefined
         const searchQuery = linkSearchQueries[key]
         if (searchQuery && shouldRunLinkSearch(searchQuery)) {
-          runLinkSearch(transactionId, type, searchQuery, updatedRemaining)
+          runLinkSearch(
+            transactionId,
+            type,
+            searchQuery,
+            updatedRemaining,
+            linkSearchIncludeOlder[key] ?? false
+          )
         }
         router.refresh()
       }
@@ -1657,82 +1715,102 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
         </div>
       </Card>
 
-      {/* Budget Dashboard Table */}
+      {/* Budgeted vs Actual bars */}
       <Card title="Budgeted vs Actual">
-        <Table
-          headers={[
-            <span key="cat">Category</span>,
-            <span key="bud">
-              <span className="hidden sm:inline">Budgeted</span>
-              <span className="sm:hidden">Bud</span>
-            </span>,
-            <span key="act">
-              <span className="hidden sm:inline">Actual</span>
-              <span className="sm:hidden">Act</span>
-            </span>,
-            <span key="diff">
-              <span className="hidden sm:inline">Difference</span>
-              <span className="sm:hidden">Diff</span>
-            </span>,
-          ]}
-          rows={[
-            ...categoryData.map(c => {
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-monday-3pm">
+            <span className="mono-label">Legend</span>
+            <span className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-2 py-1">
+              <span className="h-2 w-2 rounded-full bg-accent-soft border border-line" />
+              Budgeted
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-2 py-1">
+              <span className="h-2 w-2 rounded-full bg-accent-2" />
+              Actual
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-2 py-1">
+              <span className="h-2 w-2 rounded-full bg-danger" />
+              Over
+            </span>
+          </div>
+          <div className="space-y-3">
+            {categoryData.map(c => {
               const iconColors = getCategoryColor(c.category)
-              const categoryCell = (
-                <button
-                  key={c.category}
-                  type="button"
-                  onClick={() => handleQuickFilterCategory(c.category)}
-                  className="flex items-center gap-2 text-left"
-                  title={`Filter by ${c.category}`}
-                >
-                  <span
-                    className={`inline-flex h-7 w-7 items-center justify-center rounded-full ${iconColors.bg} ${iconColors.text}`}
-                    aria-hidden
-                  >
-                    {getMobileCategoryIcon(c.category)}
-                  </span>
-                  <span className="hidden md:inline">{c.category}</span>
-                </button>
-              )
+              const budgetPct = Math.min(100, (c.budgeted / budgetBarMax) * 100)
+              const withinPct = Math.min(100, (Math.min(c.actual, c.budgeted) / budgetBarMax) * 100)
+              const overPct = Math.min(100, (Math.max(0, c.actual - c.budgeted) / budgetBarMax) * 100)
+              const isSelected = budgetTableSelection === c.category
+              const diffClass = c.difference > 0 ? 'text-rose-600' : 'text-emerald-600'
 
-              return [
-                categoryCell,
-                <div key={`${c.category}-bud`} className="text-right tabular-nums whitespace-nowrap">
-                  {formatCurrencyRounded(c.budgeted)}
-                </div>,
-                <div key={`${c.category}-act`} className="text-right tabular-nums whitespace-nowrap">
-                  {formatCurrencyRounded(c.actual)}
-                </div>,
+              return (
                 <div
-                  key={`${c.category}-diff`}
-                  className={`text-right tabular-nums whitespace-nowrap ${c.difference > 0 ? 'text-rose-600' : 'text-emerald-600'}`}
+                  key={c.category}
+                  className={`rounded-lg border border-line bg-white px-3 py-3 transition ${isSelected ? 'bg-surface-muted' : ''}`}
                 >
-                  {formatCurrencyRounded(c.difference)}
+                  <div className="grid gap-3 sm:grid-cols-[minmax(170px,220px)_1fr_160px] sm:items-center">
+                    <button
+                      type="button"
+                      onClick={() => handleQuickFilterCategory(c.category)}
+                      className="flex items-center gap-2 text-left"
+                      title={`Filter by ${c.category}`}
+                      aria-pressed={isSelected}
+                    >
+                      <span
+                        className={`inline-flex h-7 w-7 items-center justify-center rounded-full ${iconColors.bg} ${iconColors.text}`}
+                        aria-hidden
+                      >
+                        {getMobileCategoryIcon(c.category)}
+                      </span>
+                      <span className="text-sm">{c.category}</span>
+                    </button>
+                    <div className="space-y-2">
+                      <div className="relative h-3 rounded-full bg-surface-muted overflow-hidden">
+                        <div
+                          className="absolute left-0 top-0 h-full bg-accent-soft"
+                          style={{ width: `${budgetPct}%` }}
+                        />
+                        <div
+                          className="absolute left-0 top-0 h-full bg-accent-2"
+                          style={{ width: `${withinPct}%` }}
+                        />
+                        {overPct > 0 && (
+                          <div
+                            className="absolute top-0 h-full bg-danger"
+                            style={{ left: `${budgetPct}%`, width: `${overPct}%` }}
+                          />
+                        )}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3 text-[11px] text-monday-3pm sm:hidden">
+                        <span className="mono-label">Budgeted {formatCurrencyRounded(c.budgeted)}</span>
+                        <span className="mono-label">Actual {formatCurrencyRounded(c.actual)}</span>
+                        <span className={`mono-label ${diffClass}`}>Diff {formatCurrencyRounded(c.difference)}</span>
+                      </div>
+                    </div>
+                    <div className="hidden sm:flex sm:flex-col sm:items-end sm:gap-1 text-[11px] text-monday-3pm">
+                      <span className="mono-label">Budgeted {formatCurrencyRounded(c.budgeted)}</span>
+                      <span className="mono-label">Actual {formatCurrencyRounded(c.actual)}</span>
+                      <span className={`mono-label ${diffClass}`}>Diff {formatCurrencyRounded(c.difference)}</span>
+                    </div>
+                  </div>
                 </div>
-              ]
-            }),
-            [
-              <strong key="total">Total</strong>,
-              <strong key="budgeted" className="text-right tabular-nums whitespace-nowrap">
-                {formatCurrencyRounded(totalBudgeted)}
-              </strong>,
-              <strong key="actual" className="text-right tabular-nums whitespace-nowrap">
-                {formatCurrencyRounded(totalActual)}
-              </strong>,
-              <strong
-                key="diff"
-                className={`text-right tabular-nums whitespace-nowrap ${totalDifference > 0 ? 'text-rose-600' : 'text-emerald-600'}`}
-              >
-                {formatCurrencyRounded(totalDifference)}
-              </strong>
-            ]
-          ]}
-          rowClassNames={[
-            ...categoryData.map(c => (budgetTableSelection === c.category ? 'bg-surface-muted' : '')),
-            ''
-          ]}
-        />
+              )
+            })}
+            <div className="rounded-lg border border-line bg-surface-muted px-3 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-sm font-semibold">Total</div>
+                <div className="flex flex-wrap items-center gap-3 text-[11px] text-monday-3pm">
+                  <span className="mono-label">Budgeted {formatCurrencyRounded(totalBudgeted)}</span>
+                  <span className="mono-label">Actual {formatCurrencyRounded(totalActual)}</span>
+                  <span
+                    className={`mono-label ${totalDifference > 0 ? 'text-rose-600' : 'text-emerald-600'}`}
+                  >
+                    Diff {formatCurrencyRounded(totalDifference)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </Card>
 
       {/* Transactions */}
@@ -1919,8 +1997,11 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                 const refundLinksTo = (t.linksTo || []).filter((link: any) => link.type === 'refund')
                 const reimbursementLinksFrom = (t.linksFrom || []).filter((link: any) => link.type === 'reimbursement')
                 const reimbursementLinksTo = (t.linksTo || []).filter((link: any) => link.type === 'reimbursement')
+                const statusLabel = t.status || 'posted'
+                const projectedClass = statusLabel === 'projected' ? 'text-monday-3pm italic' : ''
                 const expenseValue = getExpenseAmount(t)
                 const expenseAmount = Math.abs(expenseValue)
+                const amountTone = expenseValue < 0 && statusLabel !== 'projected' ? 'text-rose-600' : ''
                 const refundedTotal = refundLinksTo.reduce((sum: number, link: any) => sum + (link.amount || 0), 0)
                 const reimbursedTotal = reimbursementLinksTo.reduce((sum: number, link: any) => sum + (link.amount || 0), 0)
                 const refundRemaining = getRemainingLinkAmount(t, 'refund')
@@ -1939,12 +2020,12 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                 const reimbursementSearchError = linkSearchErrors[reimbursementKey]
                 const refundSearchLoading = linkSearchLoading.has(refundKey)
                 const reimbursementSearchLoading = linkSearchLoading.has(reimbursementKey)
+                const refundIncludeOlder = linkSearchIncludeOlder[refundKey] ?? false
+                const reimbursementIncludeOlder = linkSearchIncludeOlder[reimbursementKey] ?? false
                 const isExpanded = expandedTransactions.has(t.id)
                 const isSelected = selectedTransactions.has(t.id)
                 const categoryColors = getCategoryColor(t.category || 'Uncategorized')
-                const statusLabel = t.status || 'posted'
                 const hasNote = Boolean(t.userDescription && t.userDescription.trim())
-                const projectedClass = statusLabel === 'projected' ? 'text-monday-3pm italic' : ''
                 const categoryLabel = t.category || 'Uncategorized'
                 const mobileCategoryIcon = getMobileCategoryIcon(categoryLabel)
                 const categoryDisabled = t.status === 'projected' && t.source === 'recurring'
@@ -2004,8 +2085,8 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                       <div className="min-w-0 flex-1">
                         <div className={`truncate ${projectedClass}`}>{t.description}</div>
                       </div>
-                      <div className={`font-medium tabular-nums ${projectedClass}`}>
-                        {formatCurrency(t.amount)}
+                      <div className={`font-medium tabular-nums ${projectedClass} ${amountTone}`}>
+                        {formatCurrency(expenseValue)}
                       </div>
                     </div>
                     {isMobileCategoryOpen && (
@@ -2094,8 +2175,8 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                         {t.account?.name || t.importBatch?.account?.name || '—'}
                       </div>
                       <div>
-                        <div className={`font-medium tabular-nums ${projectedClass}`}>
-                          {formatCurrency(t.amount)}
+                        <div className={`font-medium tabular-nums ${projectedClass} ${amountTone}`}>
+                          {formatCurrency(expenseValue)}
                         </div>
                       </div>
                     </div>
@@ -2130,6 +2211,34 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                               />
                             </div>
                           </div>
+                          {t.recurringDefinition && (
+                            <div>
+                              <div className="mono-label">Recurring schedule</div>
+                              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                                <Link
+                                  href={`/recurring#recurring-${t.recurringDefinition.id}`}
+                                  className="font-medium text-foreground hover:underline"
+                                >
+                                  {t.recurringDefinition.displayLabel || t.recurringDefinition.merchantLabel}
+                                </Link>
+                                {t.status !== 'projected' && (
+                                  <Button
+                                    variant="secondary"
+                                    onClick={() => handleUnlinkRecurring(t.id)}
+                                    disabled={unlinkingRecurring.has(t.id)}
+                                  >
+                                    {unlinkingRecurring.has(t.id) ? 'Unlinking...' : 'Unlink'}
+                                  </Button>
+                                )}
+                              </div>
+                              {t.recurringDefinition.displayLabel
+                                && t.recurringDefinition.displayLabel !== t.recurringDefinition.merchantLabel && (
+                                <div className="mt-1 text-xs text-monday-3pm">
+                                  Matches: {t.recurringDefinition.merchantLabel}
+                                </div>
+                              )}
+                            </div>
+                          )}
                           <div>
                             <div className="mono-label">Actions</div>
                             <div className="mt-2 flex flex-wrap gap-2">
@@ -2315,6 +2424,16 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                                 onChange={(e) => handleLinkSearchChange(t.id, 'refund', e.target.value)}
                                 className="mt-1 w-full rounded-md border border-line bg-white px-2 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
                               />
+                              <div className="mt-2 flex flex-wrap items-center gap-2 text-monday-3pm">
+                                <span>{refundIncludeOlder ? 'Searching all time.' : 'Searching last 90 days.'}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleLinkSearchRange(t.id, 'refund')}
+                                  className="mono-label hover:text-foreground"
+                                >
+                                  {refundIncludeOlder ? 'Only recent' : 'Include older'}
+                                </button>
+                              </div>
                               {refundSearchLoading && (
                                 <div className="mt-2 text-monday-3pm">Searching...</div>
                               )}
@@ -2388,6 +2507,16 @@ export function BudgetDashboard({ period, settings }: { period: Period; settings
                                 onChange={(e) => handleLinkSearchChange(t.id, 'reimbursement', e.target.value)}
                                 className="mt-1 w-full rounded-md border border-line bg-white px-2 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
                               />
+                              <div className="mt-2 flex flex-wrap items-center gap-2 text-monday-3pm">
+                                <span>{reimbursementIncludeOlder ? 'Searching all time.' : 'Searching last 90 days.'}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleLinkSearchRange(t.id, 'reimbursement')}
+                                  className="mono-label hover:text-foreground"
+                                >
+                                  {reimbursementIncludeOlder ? 'Only recent' : 'Include older'}
+                                </button>
+                              </div>
                               {reimbursementSearchLoading && (
                                 <div className="mt-2 text-monday-3pm">Searching...</div>
                               )}

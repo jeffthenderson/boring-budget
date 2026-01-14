@@ -85,7 +85,7 @@ You've been approved for Production. Use this checklist to finish your integrati
 
 ---
 
-## Optimize integration (2 of 3 complete)
+## Optimize integration (3 of 4 complete)
 
 - [x] **Duplicate Items** — Reduce user confusion and manage costs by detecting duplicate Items.
   ✅ `createAccountsFromPlaid()` checks for existing accounts with same Plaid account IDs
@@ -103,6 +103,9 @@ You've been approved for Production. Use this checklist to finish your integrati
   ✅ Sync results logged with counts (added, skipped, errors)
   ✅ Console errors for failed operations
 
+- [x] **Webhook verification** — Validate Plaid signatures and body hashes.
+  ✅ Verifies `Plaid-Verification` JWT and `request_body_sha256` in production
+
 ---
 
 ## Environment Variables Required for Production
@@ -117,10 +120,13 @@ PLAID_ENV=production
 PLAID_WEBHOOK_URL=https://your-domain.com/api/plaid/webhook
 
 # Encryption key for access tokens (generate secure 32+ char key)
-PLAID_ENCRYPTION_KEY=your_secure_encryption_key
+PLAID_TOKEN_ENCRYPTION_KEY=your_secure_encryption_key
 
 # MFA requirement (defaults to true if not set)
 REQUIRE_MFA_FOR_PLAID=true
+
+# Optional: enforce webhook verification in non-prod
+PLAID_WEBHOOK_VERIFICATION=true
 ```
 
 ---

@@ -32,6 +32,7 @@ export async function getPreallocationSettings() {
         charityPercent: 0,
         retirementAmount: 0,
         otherSavingsAmount: 0,
+        hideInternalTransfers: true,
       },
     })
   }
@@ -43,6 +44,7 @@ export async function updatePreallocationSettings(data: {
   charityPercent: number
   retirementAmount: number
   otherSavingsAmount: number
+  hideInternalTransfers?: boolean
 }) {
   const user = await getCurrentUser()
 

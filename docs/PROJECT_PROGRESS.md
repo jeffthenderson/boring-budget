@@ -11,6 +11,7 @@ Legend: [x] done  [~] partial  [ ] not started
 - [x] Recurring definitions with projected transactions counted as spent
 - [x] Manual add/delete transactions
 - [x] Budget vs actual (overall + category)
+- [x] Budget vs actual bars (replaces table)
 - [x] Sortable transactions list (default date sort)
 - [x] Category/status filters (including Uncategorized)
 - [x] Full reset (clears budgets, imports, and accounts)
@@ -30,6 +31,8 @@ Legend: [x] done  [~] partial  [ ] not started
 - [x] Suggestion UX: months seen, dates, amount range, sub-description
 - [x] Hide/do-not-add suggestions and remove after adding
 - [x] Avoid suggesting canceled or non-monthly patterns
+- [x] Suppress projected duplicates when a posted recurring lands within the match window
+- [x] Show linked transactions on recurring schedules with jump + unlink
 - [ ] Maybe: add explicit "lock" on transactions to prevent auto-recurring backfill
 
 ## Budget setup improvements
@@ -41,6 +44,9 @@ Legend: [x] done  [~] partial  [ ] not started
 - [x] Amount parsing supports $ and commas in amount inputs (parseCurrency)
 - [x] Bankers rounding for all amount inputs
 - [x] Date handling issue: transaction list starts one day early in some months
+- [x] Store authorized + posted dates (authorized primary for credit cards)
+- [x] Internal transfer detection + hide-in-budget setting (default on)
+- [x] Transaction list shows budget-impact signs (inflow negative, outflow positive)
 
 ## Income, refunds, reimbursements
 - [x] Income category with projected income transactions (matched to imports)
@@ -86,11 +92,30 @@ Legend: [x] done  [~] partial  [ ] not started
   - Store minimal raw data needed for recategorization
 - [ ] Tests: order parsing, matching heuristics, and LLM response validation
 
+## Plaid bank sync (production)
+- [x] Plaid Link flow (token create + exchange)
+- [x] Account linking UI (status, sync now, unlink)
+- [x] Transactions sync with dedupe + recurring matching
+- [x] Webhooks + PlaidWebhookLog
+- [x] Update mode re-auth flow + error flags
+- [x] Access token encryption at rest
+- [x] Consent dialog + MFA gating
+- [x] Production credentials configured
+- [x] Force resync (last 90 days) button for backfills
+
+## Data portability
+- [x] Export user data to JSON
+- [x] Import JSON backup (clears then restores; no Plaid credentials)
+
 ## Someday / Maybe
 - Auto-categorize transactions (history first, LLM fallback)
 
 ## Design refresh
-- [ ] Full visual refresh with snappy interaction focus (see `docs/DESIGN_REFRESH_PLAN.md`)
+- [x] Full visual refresh with snappy interaction focus (see `docs/DESIGN_BIBLE.md`)
+
+## Auth + account
+- [x] Self-serve password reset (Supabase recovery email, no user enumeration)
+- [ ] MFA recovery playbook (Supabase admin for now; admin view later)
 
 ## Snappy UX plan (perceived speed)
 - [ ] Optimistic UI for recurring suggestion add (hide row immediately, show inline success, rollback on error)
