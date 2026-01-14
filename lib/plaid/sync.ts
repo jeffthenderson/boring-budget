@@ -3,9 +3,9 @@
 import { prisma } from '@/lib/db'
 import { plaidClient } from './client'
 import { decryptAccessToken } from './encryption'
-import { isTransferCategory, isTransferDescription } from './category-map'
-import { getCurrentOrCreatePeriod, getOrCreatePeriodForDate } from '@/lib/actions/period'
+import { getOrCreatePeriodForDate } from '@/lib/actions/period'
 import { matchExistingImportsForOpenPeriodsByUser } from '@/lib/actions/recurring'
+import { markInternalTransfersForPeriodByUser } from '@/lib/actions/transfers'
 import { findClosestProjectedTransaction, getBestRecurringMatch, matchAgainstDefinitions } from '@/lib/utils/import/recurring-matcher'
 import { computeHashKey, normalizeDescription } from '@/lib/utils/import/normalizer'
 import { revalidatePath } from 'next/cache'
@@ -24,7 +24,10 @@ export interface SyncResult {
 /**
  * Syncs transactions from Plaid for a specific account
  */
-export async function syncPlaidTransactions(accountId: string): Promise<SyncResult> {
+export async function syncPlaidTransactions(
+  accountId: string,
+  options?: { revalidate?: boolean }
+): Promise<SyncResult> {
   const account = await prisma.account.findUnique({
     where: { id: accountId },
     include: { user: true },
@@ -105,19 +108,6 @@ export async function syncPlaidTransactions(accountId: string): Promise<SyncResu
 
   console.log(`  - After filtering: added=${filteredAdded.length}, modified=${filteredModified.length}, removed=${filteredRemoved.length}`)
 
-  // Log all transactions received for debugging (before account filtering)
-  if (allAdded.length > 0 && allAdded.length <= 50) {
-    console.log('  - All transactions from Plaid (before account filter):')
-    for (const tx of allAdded) {
-      console.log(`    ${tx.date} | ${tx.name} | $${tx.amount} | account_id: ${tx.account_id} | category: ${tx.personal_finance_category?.primary}/${tx.personal_finance_category?.detailed}`)
-    }
-  } else if (allAdded.length > 50) {
-    console.log(`  - Too many transactions to log (${allAdded.length}), logging first 20:`)
-    for (const tx of allAdded.slice(0, 20)) {
-      console.log(`    ${tx.date} | ${tx.name} | $${tx.amount} | account_id: ${tx.account_id} | category: ${tx.personal_finance_category?.primary}/${tx.personal_finance_category?.detailed}`)
-    }
-  }
-
   // Process added transactions
   if (filteredAdded.length > 0) {
     const addResult = await processAddedTransactions(account, filteredAdded)
@@ -154,26 +144,121 @@ export async function syncPlaidTransactions(accountId: string): Promise<SyncResu
   }
 
   try {
-    await matchExistingImportsForOpenPeriodsByUser(account.userId)
+    await matchExistingImportsForOpenPeriodsByUser(account.userId, undefined, {
+      revalidate: options?.revalidate,
+    })
   } catch (error) {
     console.error('Error matching recurring transactions after Plaid sync:', error)
     result.errors.push(error instanceof Error ? error.message : 'Failed to match recurring transactions')
   }
 
-  // Summary log
-  console.log(`Plaid sync complete for account ${accountId}:`)
-  console.log(`  - Added: ${result.added}`)
-  console.log(`  - Modified: ${result.modified}`)
-  console.log(`  - Removed: ${result.removed}`)
-  console.log(`  - Skipped duplicates: ${result.skippedDuplicates}`)
-  console.log(`  - Skipped transfers: ${result.skippedTransfers}`)
-  console.log(`  - Matched recurring: ${result.matchedRecurring}`)
-  if (result.errors.length > 0) {
-    console.log(`  - Errors: ${result.errors.join(', ')}`)
+  if (options?.revalidate !== false) {
+    revalidatePath('/')
+    revalidatePath('/import')
   }
 
-  revalidatePath('/')
-  revalidatePath('/import')
+  return result
+}
+
+/**
+ * Force-resyncs transactions from Plaid for the last N days (default 90).
+ * Uses transactions/get and upserts based on externalId.
+ */
+export async function forceResyncPlaidTransactions(
+  accountId: string,
+  days = 90,
+  options?: { revalidate?: boolean }
+): Promise<SyncResult> {
+  const account = await prisma.account.findUnique({
+    where: { id: accountId },
+    include: { user: true },
+  })
+
+  if (!account) {
+    throw new Error('Account not found')
+  }
+
+  if (!account.plaidAccessToken || !account.plaidItemId) {
+    throw new Error('Account is not linked to Plaid')
+  }
+
+  const accessToken = decryptAccessToken(account.plaidAccessToken)
+
+  const result: SyncResult = {
+    added: 0,
+    modified: 0,
+    removed: 0,
+    skippedDuplicates: 0,
+    skippedTransfers: 0,
+    matchedRecurring: 0,
+    errors: [],
+  }
+
+  const endDate = new Date()
+  const startDate = new Date()
+  startDate.setDate(endDate.getDate() - days)
+
+  const startDateStr = startDate.toISOString().slice(0, 10)
+  const endDateStr = endDate.toISOString().slice(0, 10)
+
+  const allTransactions: PlaidTransaction[] = []
+  let offset = 0
+  const count = 500
+
+  while (true) {
+    const response = await plaidClient.transactionsGet({
+      access_token: accessToken,
+      start_date: startDateStr,
+      end_date: endDateStr,
+      options: {
+        count,
+        offset,
+      },
+    })
+
+    allTransactions.push(...response.data.transactions)
+
+    if (allTransactions.length >= response.data.total_transactions) {
+      break
+    }
+
+    offset += count
+  }
+
+  const plaidAccountId = account.plaidAccountId
+  const filtered = plaidAccountId
+    ? allTransactions.filter(tx => tx.account_id === plaidAccountId)
+    : allTransactions
+
+  if (filtered.length > 0) {
+    const addResult = await processAddedTransactions(account, filtered)
+    result.added = addResult.added
+    result.skippedDuplicates = addResult.skippedDuplicates
+    result.skippedTransfers = addResult.skippedTransfers
+    result.matchedRecurring = addResult.matchedRecurring
+    result.errors.push(...addResult.errors)
+  }
+
+  await prisma.account.update({
+    where: { id: accountId },
+    data: {
+      plaidLastSyncAt: new Date(),
+    },
+  })
+
+  try {
+    await matchExistingImportsForOpenPeriodsByUser(account.userId, undefined, {
+      revalidate: options?.revalidate,
+    })
+  } catch (error) {
+    console.error('Error matching recurring transactions after Plaid force resync:', error)
+    result.errors.push(error instanceof Error ? error.message : 'Failed to match recurring transactions')
+  }
+
+  if (options?.revalidate !== false) {
+    revalidatePath('/')
+    revalidatePath('/import')
+  }
 
   return result
 }
@@ -187,7 +272,7 @@ interface ProcessAddedResult {
 }
 
 async function processAddedTransactions(
-  account: { id: string; userId: string; type: string; invertAmounts: boolean },
+  account: { id: string; userId: string; type: string; invertAmounts: boolean; plaidItemId: string | null },
   transactions: PlaidTransaction[]
 ): Promise<ProcessAddedResult> {
   const result: ProcessAddedResult = {
@@ -199,16 +284,33 @@ async function processAddedTransactions(
   }
 
   // Group transactions by month/year for period assignment
-  const transactionsByPeriod = new Map<string, PlaidTransaction[]>()
+  const transactionsByPeriod = new Map<string, Array<{
+    tx: PlaidTransaction
+    primaryDate: Date
+    postedDate: Date
+    authorizedDate: Date | null
+  }>>()
 
   for (const tx of transactions) {
-    const date = new Date(tx.date)
-    const key = `${date.getFullYear()}-${date.getMonth() + 1}`
+    const postedDate = new Date(tx.date)
+    const authorizedDate = tx.authorized_date ? new Date(tx.authorized_date) : null
+    const primaryDate = account.type === 'credit_card' && authorizedDate ? authorizedDate : postedDate
+    const key = `${primaryDate.getFullYear()}-${primaryDate.getMonth() + 1}`
     if (!transactionsByPeriod.has(key)) {
       transactionsByPeriod.set(key, [])
     }
-    transactionsByPeriod.get(key)!.push(tx)
+    transactionsByPeriod.get(key)!.push({ tx, primaryDate, postedDate, authorizedDate })
   }
+
+  const plaidTxIds = transactions.map(tx => tx.transaction_id)
+  const existingByExternalId = await prisma.transaction.findMany({
+    where: {
+      externalId: { in: plaidTxIds },
+      period: { userId: account.userId },
+    },
+    select: { id: true, externalId: true, accountId: true, periodId: true },
+  })
+  const existingMap = new Map(existingByExternalId.map(t => [t.externalId, t]))
 
   // Process each period's transactions
   for (const [periodKey, periodTransactions] of transactionsByPeriod) {
@@ -248,65 +350,21 @@ async function processAddedTransactions(
         categoryMappingRules.map(rule => [rule.normalizedDescription, rule])
       )
 
-      // Check for existing transactions to avoid duplicates
-      const plaidTxIds = periodTransactions.map(tx => tx.transaction_id)
-      const existingByExternalId = await prisma.transaction.findMany({
-        where: {
-          periodId: period.id,
-          externalId: { in: plaidTxIds },
-        },
-        select: { id: true, externalId: true, accountId: true },
-      })
-      const existingMap = new Map(existingByExternalId.map(t => [t.externalId, t]))
-
       const projectedToDelete = new Set<string>()
       const transactionsToCreate: any[] = []
-      const transactionsToBackfillAccountId: string[] = []
+      const transactionsToUpdate: Array<{ where: { id: string }; data: any }> = []
 
-      for (const tx of periodTransactions) {
+      for (const item of periodTransactions) {
+        const { tx, primaryDate, postedDate, authorizedDate } = item
         // Check if already imported
         const existing = existingMap.get(tx.transaction_id)
-        if (existing) {
-          // If existing but missing accountId, queue for backfill
-          if (!existing.accountId) {
-            transactionsToBackfillAccountId.push(existing.id)
-          }
-          console.log(`  [SKIP DUPLICATE] ${tx.name || tx.merchant_name} | $${tx.amount} | externalId: ${tx.transaction_id}`)
-          result.skippedDuplicates++
-          continue
-        }
-
-        // Check if this is a transfer by category
-        const plaidCategory = tx.personal_finance_category ? {
-          primary: tx.personal_finance_category.primary,
-          detailed: tx.personal_finance_category.detailed,
-        } : null
-
-        // Normalize data early so we can log it
-        const date = new Date(tx.date)
         const description = tx.name || tx.merchant_name || 'Unknown'
         const subDescription = tx.merchant_name && tx.name !== tx.merchant_name ? tx.merchant_name : undefined
-
-        // Check if this should be ignored as a transfer
-        let isIgnored = false
-        let ignoreReason: string | null = null
-
-        if (isTransferCategory(plaidCategory)) {
-          isIgnored = true
-          ignoreReason = `Transfer: ${plaidCategory?.primary}/${plaidCategory?.detailed}`
-          console.log(`  [IGNORED TRANSFER - category] ${description} | $${tx.amount} | category: ${plaidCategory?.primary}/${plaidCategory?.detailed}`)
-          result.skippedTransfers++
-        } else if (isTransferDescription(description)) {
-          isIgnored = true
-          ignoreReason = `Transfer pattern in description`
-          console.log(`  [IGNORED TRANSFER - description] ${description} | $${tx.amount}`)
-          result.skippedTransfers++
-        }
 
         // Plaid amounts: positive = money leaving account (expense), negative = money entering (income/refund)
         // Our system: positive = expense, negative = income
         let amount = tx.amount
-        if (account.invertAmounts) {
+        if (account.invertAmounts && !account.plaidItemId) {
           amount = -amount
         }
 
@@ -316,20 +374,43 @@ async function processAddedTransactions(
         const hashKey = computeHashKey(
           account.id,
           period.id,
-          date,
+          primaryDate,
           Math.round(amount * 100),
           normalizedDesc
         )
 
-        // Try to match recurring (skip for ignored transactions)
+        if (existing) {
+          const updateData: any = {
+            accountId: account.id,
+            date: primaryDate,
+            postedDate,
+            authorizedDate,
+            description,
+            subDescription,
+            amount,
+            status: tx.pending ? 'pending' : 'posted',
+            sourceImportHash: hashKey,
+          }
+          if (existing.periodId !== period.id) {
+            updateData.periodId = period.id
+          }
+          transactionsToUpdate.push({
+            where: { id: existing.id },
+            data: updateData,
+          })
+          result.skippedDuplicates++
+          continue
+        }
+
+        // Try to match recurring
         let category = 'Uncategorized'
         let isRecurringInstance = false
         let recurringDefinitionId: string | undefined
 
-        if (!isIgnored && definitions.length > 0 && amount > 0) {
+        if (definitions.length > 0 && amount > 0) {
           const importedRow = {
             id: tx.transaction_id,
-            parsedDate: date,
+            parsedDate: primaryDate,
             normalizedAmount: amount,
             normalizedDescription: normalizedDesc,
             parsedDescription: description,
@@ -359,16 +440,16 @@ async function processAddedTransactions(
             isRecurringInstance = true
             recurringDefinitionId = match.definitionId
             let projectedId: string | undefined = match.projectedTransactionId || undefined
-            if (!projectedId) {
-              const closest = findClosestProjectedTransaction(
-                projected,
-                match.definitionId,
-                date,
-                amount
-              )
-              if (closest) {
-                projectedId = closest.id
-              }
+          if (!projectedId) {
+            const closest = findClosestProjectedTransaction(
+              projected,
+              match.definitionId,
+              primaryDate,
+              amount
+            )
+            if (closest) {
+              projectedId = closest.id
+            }
             }
             if (projectedId) {
               projectedToDelete.add(projectedId)
@@ -376,8 +457,8 @@ async function processAddedTransactions(
           }
         }
 
-        // Check category mapping rules if not matched to recurring (skip for ignored)
-        if (!isIgnored && !isRecurringInstance) {
+        // Check category mapping rules if not matched to recurring
+        if (!isRecurringInstance) {
           const mappingRule = mappingRulesByNormalized.get(normalizedDesc)
           if (mappingRule && mappingRule.category !== 'Uncategorized') {
             category = mappingRule.category
@@ -387,19 +468,20 @@ async function processAddedTransactions(
         transactionsToCreate.push({
           periodId: period.id,
           accountId: account.id,  // Direct account reference for Plaid syncs
-          date,
+          date: primaryDate,
+          postedDate,
+          authorizedDate,
           description,
           subDescription,
           amount,
-          category: isIgnored ? 'Uncategorized' : category,  // Don't categorize ignored transactions
+          category,
           status: tx.pending ? 'pending' : 'posted',
           source: 'import',
           externalId: tx.transaction_id,
           sourceImportHash: hashKey,
-          isRecurringInstance: isIgnored ? false : isRecurringInstance,  // Don't mark ignored as recurring
-          recurringDefinitionId: isIgnored ? undefined : recurringDefinitionId,
-          isIgnored,
-          ignoreReason,
+          isRecurringInstance,
+          recurringDefinitionId,
+          isInternalTransfer: false,
         })
       }
 
@@ -411,12 +493,10 @@ async function processAddedTransactions(
         result.added += transactionsToCreate.length
       }
 
-      // Backfill accountId for existing transactions that are missing it
-      if (transactionsToBackfillAccountId.length > 0) {
-        await prisma.transaction.updateMany({
-          where: { id: { in: transactionsToBackfillAccountId } },
-          data: { accountId: account.id },
-        })
+      if (transactionsToUpdate.length > 0) {
+        await prisma.$transaction(
+          transactionsToUpdate.map(update => prisma.transaction.update(update))
+        )
       }
 
       // Delete matched projected transactions
@@ -425,6 +505,8 @@ async function processAddedTransactions(
           where: { id: { in: Array.from(projectedToDelete) } },
         })
       }
+
+      await markInternalTransfersForPeriodByUser(account.userId, period.id, { revalidate: false })
     } catch (error) {
       console.error(`Error processing period ${periodKey}:`, error)
       result.errors.push(`Failed to process ${periodKey}: ${error instanceof Error ? error.message : 'Unknown error'}`)
@@ -440,7 +522,7 @@ interface ProcessModifiedResult {
 }
 
 async function processModifiedTransactions(
-  account: { id: string },
+  account: { id: string; type: string; invertAmounts: boolean; plaidItemId: string | null },
   transactions: PlaidTransaction[]
 ): Promise<ProcessModifiedResult> {
   const result: ProcessModifiedResult = {
@@ -452,6 +534,7 @@ async function processModifiedTransactions(
     try {
       const existing = await prisma.transaction.findFirst({
         where: { externalId: tx.transaction_id },
+        include: { period: true },
       })
 
       if (!existing) {
@@ -459,19 +542,53 @@ async function processModifiedTransactions(
         continue
       }
 
-      // Update the transaction
+      const postedDate = new Date(tx.date)
+      const authorizedDate = tx.authorized_date ? new Date(tx.authorized_date) : null
+      const primaryDate = account.type === 'credit_card' && authorizedDate ? authorizedDate : postedDate
+
       let amount = tx.amount
-      // Note: We don't re-apply invertAmounts here since the existing transaction already has the correct sign
+      if (account.invertAmounts && !account.plaidItemId) {
+        amount = -amount
+      }
+
+      const description = tx.name || tx.merchant_name || existing.description
+      const subDescription = tx.merchant_name && tx.name !== tx.merchant_name
+        ? tx.merchant_name
+        : existing.subDescription
+
+      const targetPeriod = await getOrCreatePeriodForDate(
+        existing.period.userId,
+        primaryDate.getFullYear(),
+        primaryDate.getMonth() + 1
+      )
+
+      const normalizedDesc = normalizeDescription(description + (subDescription ? ` ${subDescription}` : ''))
+      const hashKey = computeHashKey(
+        account.id,
+        targetPeriod.id,
+        primaryDate,
+        Math.round(amount * 100),
+        normalizedDesc
+      )
+
+      const updateData: any = {
+        accountId: account.id,
+        date: primaryDate,
+        postedDate,
+        authorizedDate,
+        description,
+        subDescription,
+        amount,
+        status: tx.pending ? 'pending' : 'posted',
+        sourceImportHash: hashKey,
+      }
+      if (existing.periodId !== targetPeriod.id) {
+        updateData.periodId = targetPeriod.id
+      }
 
       await prisma.transaction.update({
         where: { id: existing.id },
-        data: {
-          date: new Date(tx.date),
-          description: tx.name || tx.merchant_name || existing.description,
-          subDescription: tx.merchant_name && tx.name !== tx.merchant_name ? tx.merchant_name : existing.subDescription,
-          amount: existing.amount < 0 ? -Math.abs(tx.amount) : Math.abs(tx.amount), // Preserve sign
-          status: tx.pending ? 'pending' : 'posted',
-        },
+        data: updateData,
       })
 
       result.modified++
@@ -519,7 +636,10 @@ async function processRemovedTransactions(
 /**
  * Syncs transactions for all Plaid-linked accounts for a user
  */
-export async function syncAllPlaidAccounts(userId: string): Promise<Map<string, SyncResult>> {
+export async function syncAllPlaidAccounts(
+  userId: string,
+  options?: { revalidate?: boolean }
+): Promise<Map<string, SyncResult>> {
   const accounts = await prisma.account.findMany({
     where: {
       userId,
@@ -532,7 +652,7 @@ export async function syncAllPlaidAccounts(userId: string): Promise<Map<string, 
 
   for (const account of accounts) {
     try {
-      const result = await syncPlaidTransactions(account.id)
+      const result = await syncPlaidTransactions(account.id, options)
       results.set(account.id, result)
     } catch (error) {
       console.error(`Error syncing account ${account.id}:`, error)

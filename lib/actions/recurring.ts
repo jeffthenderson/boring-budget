@@ -14,6 +14,8 @@ import {
 } from '@/lib/utils/import/recurring-matcher'
 import { getProjectedDates, parseSchedulingRule, type SchedulingRule } from '@/lib/utils/scheduling'
 
+const RECURRING_POSTED_MATCH_WINDOW_DAYS = 5
+
 export async function createRecurringDefinition(data: {
   category: string
   merchantLabel: string
@@ -214,23 +216,70 @@ async function generateProjectedTransactionsForDefinition(
       periodId,
       recurringDefinitionId: definitionId,
     },
-    select: { date: true, status: true },
+    select: { id: true, date: true, status: true },
   })
 
-  const existingProjectedDates = new Set<string>()
-  const existingPostedDates = new Set<string>()
-  for (const tx of existing) {
-    const dateKey = tx.date.toISOString().split('T')[0]
-    if (tx.status === 'projected') {
-      existingProjectedDates.add(dateKey)
-    } else {
-      existingPostedDates.add(dateKey)
+  const dayMs = 1000 * 60 * 60 * 24
+  const dateDiffDays = (a: Date, b: Date) => Math.abs((a.getTime() - b.getTime()) / dayMs)
+  const projectedRows = existing.filter(tx => tx.status === 'projected')
+  const postedRows = existing.filter(tx => tx.status !== 'projected')
+
+  let remainingProjected = projectedRows
+  if (projectedRows.length > 0 && postedRows.length > 0) {
+    const deletions: string[] = []
+    const available = [...projectedRows]
+    for (const posted of postedRows) {
+      let bestIndex = -1
+      let bestDiff = Number.POSITIVE_INFINITY
+      for (let i = 0; i < available.length; i += 1) {
+        const candidate = available[i]
+        const diff = dateDiffDays(candidate.date, posted.date)
+        if (diff < bestDiff) {
+          bestDiff = diff
+          bestIndex = i
+        }
+      }
+      if (bestIndex >= 0 && bestDiff <= RECURRING_POSTED_MATCH_WINDOW_DAYS) {
+        deletions.push(available[bestIndex].id)
+        available.splice(bestIndex, 1)
+      }
+    }
+
+    if (deletions.length > 0) {
+      await prisma.transaction.deleteMany({
+        where: { id: { in: deletions } },
+      })
+    }
+    remainingProjected = projectedRows.filter(tx => !deletions.includes(tx.id))
+  }
+
+  const existingProjectedDates = new Set<string>(
+    remainingProjected.map(tx => tx.date.toISOString().split('T')[0])
+  )
+  const coveredScheduleDates = new Set<string>()
+  if (postedRows.length > 0) {
+    const usedPostedIds = new Set<string>()
+    for (const scheduleDate of dates) {
+      let bestPosted: typeof postedRows[number] | null = null
+      let bestDiff = Number.POSITIVE_INFINITY
+      for (const posted of postedRows) {
+        if (usedPostedIds.has(posted.id)) continue
+        const diff = dateDiffDays(posted.date, scheduleDate)
+        if (diff < bestDiff) {
+          bestDiff = diff
+          bestPosted = posted
+        }
+      }
+      if (bestPosted && bestDiff <= RECURRING_POSTED_MATCH_WINDOW_DAYS) {
+        usedPostedIds.add(bestPosted.id)
+        coveredScheduleDates.add(scheduleDate.toISOString().split('T')[0])
+      }
     }
   }
 
   for (const date of dates) {
     const dateKey = date.toISOString().split('T')[0]
-    if (existingProjectedDates.has(dateKey) || existingPostedDates.has(dateKey)) continue
+    if (existingProjectedDates.has(dateKey) || coveredScheduleDates.has(dateKey)) continue
     await prisma.transaction.create({
       data: {
         periodId,
@@ -250,9 +299,47 @@ async function generateProjectedTransactionsForDefinition(
 export async function getAllRecurringDefinitions() {
   const user = await getCurrentUser()
 
-  return prisma.recurringDefinition.findMany({
+  const definitions = await prisma.recurringDefinition.findMany({
     where: { userId: user.id },
     orderBy: { createdAt: 'asc' },
+    include: {
+      transactions: {
+        where: { status: { not: 'projected' } },
+        orderBy: { date: 'desc' },
+        take: 3,
+        select: {
+          id: true,
+          date: true,
+          amount: true,
+          description: true,
+          status: true,
+          source: true,
+          period: { select: { year: true, month: true } },
+          account: { select: { type: true, invertAmounts: true, plaidItemId: true } },
+          importBatch: {
+            select: {
+              account: { select: { type: true, invertAmounts: true, plaidItemId: true } },
+            },
+          },
+        },
+      },
+    },
+  })
+
+  return definitions.map(definition => {
+    const linkedTransactions = definition.transactions.map(transaction => ({
+      id: transaction.id,
+      date: transaction.date,
+      description: transaction.description,
+      amount: transaction.amount,
+      displayAmount: getExpenseAmount(transaction),
+      status: transaction.status,
+      source: transaction.source,
+      period: transaction.period,
+    }))
+
+    const { transactions, ...rest } = definition
+    return { ...rest, linkedTransactions }
   })
 }
 
@@ -270,6 +357,7 @@ export async function matchExistingImportsForPeriodByUser(
       user: { include: { recurringDefinitions: true } },
       transactions: {
         include: {
+          account: true,
           importBatch: {
             include: { account: true },
           },
@@ -323,8 +411,11 @@ export async function matchExistingImportsForPeriodByUser(
 
   for (const transaction of importTransactions) {
     const expenseAmount = getExpenseAmount(transaction)
-    const isIncome = expenseAmount < 0 && transaction.importBatch?.account?.type === 'bank'
+    const accountType = transaction.importBatch?.account?.type ?? transaction.account?.type ?? null
+    const isIncome = expenseAmount < 0 && accountType === 'bank'
     if (expenseAmount === 0) continue
+    const prefersRecurringAmount = isRecurringCategory(transaction.category)
+    const matchAmount = prefersRecurringAmount ? Math.abs(expenseAmount) : expenseAmount
 
     const definitionsForMatch = isIncome ? incomeDefinitions : expenseDefinitions
     if (definitionsForMatch.length === 0) continue
@@ -341,7 +432,7 @@ export async function matchExistingImportsForPeriodByUser(
     const importedRow = {
       id: transaction.id,
       parsedDate: transaction.date,
-      normalizedAmount: isIncome ? -Math.abs(expenseAmount) : expenseAmount,
+      normalizedAmount: isIncome ? -Math.abs(expenseAmount) : matchAmount,
       normalizedDescription: normalized,
       parsedDescription: rawDescription,
     }
@@ -446,14 +537,18 @@ export async function matchExistingImportsForPeriod(
   return matchExistingImportsForPeriodByUser(user.id, periodId, options)
 }
 
-export async function matchExistingImportsForOpenPeriods(definitionIds?: string[]) {
+export async function matchExistingImportsForOpenPeriods(
+  definitionIds?: string[],
+  options?: { revalidate?: boolean }
+) {
   const user = await getCurrentUser()
-  return matchExistingImportsForOpenPeriodsByUser(user.id, definitionIds)
+  return matchExistingImportsForOpenPeriodsByUser(user.id, definitionIds, options)
 }
 
 export async function matchExistingImportsForOpenPeriodsByUser(
   userId: string,
-  definitionIds?: string[]
+  definitionIds?: string[],
+  options?: { revalidate?: boolean }
 ) {
   const openPeriods = await prisma.budgetPeriod.findMany({
     where: {
@@ -474,6 +569,8 @@ export async function matchExistingImportsForOpenPeriodsByUser(
     matched += result.matched
   }
 
-  revalidatePath('/')
+  if (options?.revalidate !== false) {
+    revalidatePath('/')
+  }
   return { matched, periodsChecked: openPeriods.length }
 }
