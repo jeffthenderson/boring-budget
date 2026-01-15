@@ -379,6 +379,41 @@ async function processAddedTransactions(
           normalizedDesc
         )
 
+        if (tx.pending_transaction_id) {
+          const pendingMatch = await prisma.transaction.findFirst({
+            where: {
+              externalId: tx.pending_transaction_id,
+              accountId: account.id,
+            },
+          })
+
+          if (pendingMatch) {
+            const updateData: any = {
+              accountId: account.id,
+              date: primaryDate,
+              postedDate,
+              authorizedDate,
+              description,
+              subDescription,
+              amount,
+              status: tx.pending ? 'pending' : 'posted',
+              sourceImportHash: hashKey,
+              externalId: tx.transaction_id,
+            }
+
+            if (pendingMatch.periodId !== period.id) {
+              updateData.periodId = period.id
+            }
+
+            await prisma.transaction.update({
+              where: { id: pendingMatch.id },
+              data: updateData,
+            })
+            result.added += 1
+            continue
+          }
+        }
+
         if (existing) {
           const updateData: any = {
             accountId: account.id,
@@ -522,7 +557,7 @@ interface ProcessModifiedResult {
 }
 
 async function processModifiedTransactions(
-  account: { id: string; type: string; invertAmounts: boolean; plaidItemId: string | null },
+  account: { id: string; userId: string; type: string; invertAmounts: boolean; plaidItemId: string | null },
   transactions: PlaidTransaction[]
 ): Promise<ProcessModifiedResult> {
   const result: ProcessModifiedResult = {
@@ -537,11 +572,6 @@ async function processModifiedTransactions(
         include: { period: true },
       })
 
-      if (!existing) {
-        // Transaction doesn't exist, might have been deleted or not synced yet
-        continue
-      }
-
       const postedDate = new Date(tx.date)
       const authorizedDate = tx.authorized_date ? new Date(tx.authorized_date) : null
       const primaryDate = account.type === 'credit_card' && authorizedDate ? authorizedDate : postedDate
@@ -551,13 +581,18 @@ async function processModifiedTransactions(
         amount = -amount
       }
 
-      const description = tx.name || tx.merchant_name || existing.description
+      const description = tx.name || tx.merchant_name || existing?.description || 'Unknown'
       const subDescription = tx.merchant_name && tx.name !== tx.merchant_name
         ? tx.merchant_name
-        : existing.subDescription
+        : existing?.subDescription
+
+      if (!existing && !tx.pending_transaction_id) {
+        // Transaction doesn't exist and has no pending link
+        continue
+      }
 
       const targetPeriod = await getOrCreatePeriodForDate(
-        existing.period.userId,
+        existing?.period.userId ?? account.userId,
         primaryDate.getFullYear(),
         primaryDate.getMonth() + 1
       )
@@ -582,14 +617,44 @@ async function processModifiedTransactions(
         status: tx.pending ? 'pending' : 'posted',
         sourceImportHash: hashKey,
       }
-      if (existing.periodId !== targetPeriod.id) {
-        updateData.periodId = targetPeriod.id
-      }
+      if (!existing) {
+        const pendingId = tx.pending_transaction_id
+        if (!pendingId) {
+          continue
+        }
 
-      await prisma.transaction.update({
-        where: { id: existing.id },
-        data: updateData,
-      })
+        const pendingMatch = await prisma.transaction.findFirst({
+          where: {
+            externalId: pendingId,
+            accountId: account.id,
+          },
+        })
+
+        if (!pendingMatch) {
+          continue
+        }
+
+        if (pendingMatch.periodId !== targetPeriod.id) {
+          updateData.periodId = targetPeriod.id
+        }
+
+        await prisma.transaction.update({
+          where: { id: pendingMatch.id },
+          data: {
+            ...updateData,
+            externalId: tx.transaction_id,
+          },
+        })
+      } else {
+        if (existing.periodId !== targetPeriod.id) {
+          updateData.periodId = targetPeriod.id
+        }
+
+        await prisma.transaction.update({
+          where: { id: existing.id },
+          data: updateData,
+        })
+      }
 
       result.modified++
     } catch (error) {
